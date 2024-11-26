@@ -81,7 +81,7 @@ Model modelDartLegoLeftHand;
 Model modelDartLegoRightHand;
 Model modelDartLegoLeftLeg;
 Model modelDartLegoRightLeg;
-
+//DEFINICION DE TEXTURAS
 GLuint textureCespedID, textureWallID, textureWindowID, textureHighwayID, textureLandingPadID;
 GLuint skyboxTextureID;
 
@@ -209,7 +209,7 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
 
-	// Inicialización de los shaders
+	// Inicialización de los shaders // CAMBIAR AQUI PARA SKYBOX
 	shader.initialize("../Shaders/colorShader.vs", "../Shaders/colorShader.fs");
 	shaderSkybox.initialize("../Shaders/skyBox.vs", "../Shaders/skyBox.fs");
 	shaderMulLighting.initialize("../Shaders/iluminacion_texture_res.vs", "../Shaders/multipleLights.fs");
@@ -499,7 +499,7 @@ void destroy() {
 	glDeleteTextures(1, &textureWallID);
 	glDeleteTextures(1, &textureWindowID);
 	glDeleteTextures(1, &textureHighwayID);
-	glDeleteTextures(1, &textureLandingPadID);
+	glDeleteTextures(1, &textureLandingPadID); // SE LIBERA GPU
 
 	// Cube Maps Delete
 	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
@@ -691,7 +691,7 @@ void applicationLoop() {
 
 	while (psi) {
 		currTime = TimeManager::Instance().GetTime();
-		if(currTime - lastTime < 0.016666667){
+		if(currTime - lastTime < 0.016666667){ //60 FRAMES POR SEGUNDO evitar que la ejecución sea mas rapida y asegurar que sea continua
 			glfwPollEvents();
 			continue;
 		}
@@ -709,7 +709,7 @@ void applicationLoop() {
 				(float) screenWidth / (float) screenHeight, 0.01f, 100.0f);
 		glm::mat4 view = camera->getViewMatrix();
 
-		// Settea la matriz de vista y projection al shader con solo color
+		// Settea la matriz de vista y projection al shader con solo color Aqui se inicializa la matriz de proyeccion
 		shader.setMatrix4("projection", 1, false, glm::value_ptr(projection));
 		shader.setMatrix4("view", 1, false, glm::value_ptr(view));
 
@@ -838,6 +838,14 @@ void applicationLoop() {
 		/*******************************************
 		 * Esfera 1
 		*********************************************/
+		
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D,textureCespedID);
+		shaderMulLighting.setInt("texture1",0);
+		esfera1.setScale(glm::vec3(2.0,5.0,2.0));
+		esfera1.setPosition(glm::vec3(0.0f,2.0f,0.0f));
+		esfera1.render();
+
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, textureHighwayID);
 		shaderMulLighting.setInt("texture1", 0);
@@ -850,7 +858,7 @@ void applicationLoop() {
 		shaderMulLighting.setInt("texture1", 0);
 		esfera1.setScale(glm::vec3(10.0, 10.0, 10.0));
 		esfera1.setPosition(glm::vec3(3.0f, 2.0f, 10.0f));
-		esfera1.enableWireMode();
+		esfera1.enableWireMode(); // Esfera donde se le ve la malla o geometria
 		esfera1.render();
 		esfera1.enableFillMode();
 
@@ -862,7 +870,7 @@ void applicationLoop() {
 		boxLandingPad.setOrientation(glm::vec3(0.0f, 0.0f, 0.0f));
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, textureLandingPadID);
-		shaderMulLighting.setInt("texture1", 0);
+		shaderMulLighting.setInt("texture1", 0); // Se puede modificar el wrapping para hacer que las texturas se repitan
 		shaderMulLighting.setVectorFloat2("scaleUV", glm::value_ptr(glm::vec2(2.0, 2.0)));
 		boxLandingPad.render();
 		shaderMulLighting.setVectorFloat2("scaleUV", glm::value_ptr(glm::vec2(1.0, 1.0)));

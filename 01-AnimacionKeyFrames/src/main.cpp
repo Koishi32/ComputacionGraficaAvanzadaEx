@@ -64,6 +64,7 @@ Model modelEclipseRearWheels;
 Model modelEclipseFrontalWheels;
 Model modelHeliChasis;
 Model modelHeliHeli;
+Model modelHeliBack;
 Model modelLambo;
 Model modelLamboLeftDor;
 Model modelLamboRightDor;
@@ -138,13 +139,17 @@ int numPasosDart = 0;
 
 // Var animate helicopter
 float rotHelHelY = 0.0;
-
+float rotHeliBack = 0.0f;
 // Var animate lambo dor
 int stateDoor = 0;
 float dorRotCount = 0.0;
 
 double deltaTime;
 double currTime, lastTime;
+
+// Variables Animacion Maquina de estados Eclipse
+const float avance = 0.1f;
+const float giroEclipse = 0.5f;
 
 // Se definen todos las funciones.
 void reshapeCallback(GLFWwindow *Window, int widthRes, int heightRes);
@@ -248,10 +253,12 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	modelEclipseRearWheels.loadModel("../models/Eclipse/2003eclipse_rear_wheels.obj");
 	modelEclipseRearWheels.setShader(&shaderMulLighting);
 	// Helicopter
-	modelHeliChasis.loadModel("../models/Helicopter/Mi_24_chasis.obj");
+	modelHeliChasis.loadModel("../models/Helicopter/Chasis.obj");
 	modelHeliChasis.setShader(&shaderMulLighting);
 	modelHeliHeli.loadModel("../models/Helicopter/Mi_24_heli.obj");
 	modelHeliHeli.setShader(&shaderMulLighting);
+	modelHeliBack.loadModel("../models/Helicopter/HeliBack.obj");
+	modelHeliBack.setShader(&shaderMulLighting);
 	// Lamborginhi
 	modelLambo.loadModel("../models/Lamborginhi_Aventador_OBJ/Lamborghini_Aventador_chasis.obj");
 	modelLambo.setShader(&shaderMulLighting);
@@ -484,6 +491,7 @@ void destroy() {
 	modelEclipseFrontalWheels.destroy();
 	modelEclipseRearWheels.destroy();
 	modelHeliChasis.destroy();
+	modelHeliHeli.destroy();
 	modelHeliHeli.destroy();
 	modelLambo.destroy();
 	modelLamboFrontLeftWheel.destroy();
@@ -907,7 +915,11 @@ void applicationLoop() {
 		modelMatrixHeliHeli = glm::rotate(modelMatrixHeliHeli, rotHelHelY, glm::vec3(0, 1, 0));
 		modelMatrixHeliHeli = glm::translate(modelMatrixHeliHeli, glm::vec3(0.0, 0.0, 0.249548));
 		modelHeliHeli.render(modelMatrixHeliHeli);
-
+		glm::mat4 modelMatrixHeliBack= glm::mat4(modelMatrixHeliChasis);
+		modelMatrixHeliBack = glm::translate(modelMatrixHeliBack,glm::vec3(0.474756,2.09327f ,-5.64941f));
+		modelMatrixHeliBack = glm::rotate(modelMatrixHeliBack,rotHeliBack,glm::vec3(1.0f,0.0f,0.0f));
+		modelMatrixHeliBack = glm::translate(modelMatrixHeliBack,glm::vec3(-0.474756,-2.09327f ,5.64941f));
+		modelHeliBack.render(modelMatrixHeliBack);
 		// Lambo car
 		glDisable(GL_CULL_FACE);
 		glm::mat4 modelMatrixLamboChasis = glm::mat4(modelMatrixLambo);
@@ -915,9 +927,9 @@ void applicationLoop() {
 		modelLambo.render(modelMatrixLamboChasis);
 		glActiveTexture(GL_TEXTURE0);
 		glm::mat4 modelMatrixLamboLeftDor = glm::mat4(modelMatrixLamboChasis);
-		modelMatrixLamboLeftDor = glm::translate(modelMatrixLamboLeftDor, glm::vec3(1.08676, 0.707316, 0.982601));
+		modelMatrixLamboLeftDor = glm::translate(modelMatrixLamboLeftDor, glm::vec3(1.08866, 0.705743, 0.96917));
 		modelMatrixLamboLeftDor = glm::rotate(modelMatrixLamboLeftDor, glm::radians(dorRotCount), glm::vec3(1.0, 0, 0));
-		modelMatrixLamboLeftDor = glm::translate(modelMatrixLamboLeftDor, glm::vec3(-1.08676, -0.707316, -0.982601));
+		modelMatrixLamboLeftDor = glm::translate(modelMatrixLamboLeftDor, glm::vec3(-1.08866, -0.705743, -0.96917));
 		modelLamboLeftDor.render(modelMatrixLamboLeftDor);
 		modelLamboRightDor.render(modelMatrixLamboChasis);
 		modelLamboFrontLeftWheel.render(modelMatrixLamboChasis);
@@ -993,9 +1005,141 @@ void applicationLoop() {
 		skyboxSphere.render();
 		glCullFace(oldCullFaceMode);
 		glDepthFunc(oldDepthFuncMode);
+		/*********Maquinas de estado********/
 
+		//DART VARIABLES
+
+		if(record && modelSelected == 1){
+			matrixDartJoints.push_back(rotDartHead);
+			matrixDartJoints.push_back(rotDartLeftArm);
+			matrixDartJoints.push_back(rotDartLeftHand);
+			matrixDartJoints.push_back(rotDartRightArm);
+			matrixDartJoints.push_back(rotDartRightHand);
+			matrixDartJoints.push_back(rotDartLeftLeg);
+			matrixDartJoints.push_back(rotDartRightLeg);
+			if(saveFrame){
+				saveFrame = false;
+				appendFrame(myfile,matrixDartJoints);
+			}
+		}
+		else if (keyFramesDartJoints.size()>0){
+			interpolationDartJoints = numPasosDartJoints / (float) maxNumPasosDartJoints;
+			numPasosDartJoints++;
+			if(interpolationDartJoints > 1.0){
+				interpolationDartJoints=0;
+				numPasosDartJoints = 0;
+				indexFrameDartJoints = indexFrameDartJointsNext;
+				indexFrameDartJointsNext++;
+			}
+			if(indexFrameDartJointsNext > keyFramesDartJoints.size() - 1){
+				indexFrameDartJointsNext =0;
+			}
+			rotDartHead = interpolate(keyFramesDartJoints,indexFrameDartJoints, indexFrameDartJointsNext,0,interpolationDartJoints);
+			rotDartHead = interpolate(keyFramesDartJoints,indexFrameDartJoints, indexFrameDartJointsNext,1,interpolationDartJoints);
+			rotDartHead = interpolate(keyFramesDartJoints,indexFrameDartJoints, indexFrameDartJointsNext,2,interpolationDartJoints);
+			rotDartHead = interpolate(keyFramesDartJoints,indexFrameDartJoints, indexFrameDartJointsNext,3,interpolationDartJoints);
+			rotDartHead = interpolate(keyFramesDartJoints,indexFrameDartJoints, indexFrameDartJointsNext,4,interpolationDartJoints);
+			rotDartHead = interpolate(keyFramesDartJoints,indexFrameDartJoints, indexFrameDartJointsNext,5,interpolationDartJoints);
+			rotDartHead = interpolate(keyFramesDartJoints,indexFrameDartJoints, indexFrameDartJointsNext,6,interpolationDartJoints);
+		}
+
+		if (record && modelSelected ==2){
+			matrixDart.push_back(modelMatrixDart);
+			if(saveFrame){
+				saveFrame=false;
+				appendFrame(myfile,matrixDart);
+			}
+		}
+		else if (keyFramesDart.size()>0){
+			interpolationDart = numPasosDart / (float) maxNumPasosDart;
+			numPasosDart++;
+			if(interpolationDart>1.0){
+				numPasosDart=0;
+				interpolationDart=0;
+				indexFrameDart = indexFrameDartNext;
+				indexFrameDartNext++;
+			}
+			if(indexFrameDartNext > keyFramesDart.size() -1)
+				indexFrameDartNext =0;
+			modelMatrixDart = interpolate(keyFramesDart, indexFrameDart,indexFrameDartNext,0,interpolationDart);
+		}
+
+		//Carro Eclipse
+
+		switch (state)
+		{
+		case 0:
+			if(numberAdvance==0){
+				maxAdvance=65.0f;
+			}else if (numberAdvance==1){
+				maxAdvance=49.0f;
+			}else if (numberAdvance==2)
+			{
+				maxAdvance=44.5f;
+			}else if (numberAdvance==3)
+			{
+				maxAdvance=49.0f;
+			}else if (numberAdvance==4)
+			{
+				maxAdvance=44.5f;
+			}
+			state=1;
+			break;
+		case 1:
+			modelMatrixEclipse = glm::translate(modelMatrixEclipse,glm::vec3(0.0f,0.0f,avance));
+			advanceCount += avance;
+			rotWheelsX += 0.05f;
+			rotWheelsY -= 0.02;
+			if(rotWheelsY <0){
+				rotWheelsY=0.0f;
+			}
+			if(advanceCount > maxAdvance){
+				advanceCount=0;
+				numberAdvance++;
+				state =2;
+			}
+			break;
+		case 2:
+			modelMatrixEclipse = glm::translate(modelMatrixEclipse,glm::vec3(0.0f,0.0f,0.25f));
+			modelMatrixEclipse = glm::rotate(modelMatrixEclipse,glm::radians(giroEclipse), glm:: vec3(0,1,0));
+			rotCount += giroEclipse;
+			rotWheelsX += 0.05f;
+			rotWheelsY += 0.02f;
+			if(rotWheelsY > 0.25){
+				rotWheelsY=0.25f;
+			}
+			if(rotCount >= 90.0f){
+				rotCount=0;
+				state = 0;
+				if(numberAdvance >4)
+					numberAdvance=1;
+			}
+		break;
+		default:
+
+			break;
+		}
+		// Maquina Estado Lamborguini
+		switch (stateDoor)
+		{
+		case 0:
+			dorRotCount+=0.5;
+			if(dorRotCount > 75)
+				stateDoor =1;
+			break;
+		case 1:
+			dorRotCount -=0.5f;
+			if(dorRotCount <0){
+				dorRotCount=0.0f;
+				stateDoor=0;
+			}
+			break;
+		default:
+			break;
+		}
 		// Constantes de animaciones
 		rotHelHelY += 0.5;
+		rotHeliBack += 0.5;
 
 		glfwSwapBuffers(window);
 	}
