@@ -90,6 +90,15 @@ Model modelBuzzLeftArm;
 Model modelBuzzLeftForeArm;
 Model modelBuzzLeftHand;
 
+//Example Models
+Model mayowModelAnimate;
+Model cowboyModelAnimate;
+Model guardianModeleAnimate;
+//New Carl Hunter Robot
+Model CarlModelAnimate;
+Model HunterModelAnimate;
+Model ProtagonistModelAnimate;
+
 GLuint textureCespedID, textureWallID, textureWindowID, textureHighwayID, textureLandingPadID;
 GLuint skyboxTextureID;
 
@@ -121,11 +130,33 @@ glm::mat4 modelMatrixAircraft = glm::mat4(1.0);
 glm::mat4 modelMatrixDart = glm::mat4(1.0f);
 glm::mat4 modelMatrixBuzz = glm::mat4(1.0f);
 
+//New Matrix Example
+glm::mat4 modelMatrixMayow = glm::mat4(1.0f);
+glm::mat4 modelMatrixCowboy = glm::mat4(1.0f);
+glm::mat4 modelMatrixGuardian= glm::mat4(1.0f);
+
+//New Matrix Model carl Hunter
+glm::mat4 modelMatrixCarl = glm::mat4(1.0f);
+glm::mat4 modelMatrixHunter = glm::mat4(1.0f);
+glm::mat4 modelMatrixProtagonist = glm::mat4(1.0f);
+
 float rotDartHead = 0.0, rotDartLeftArm = 0.0, rotDartLeftHand = 0.0, rotDartRightArm = 0.0, rotDartRightHand = 0.0, rotDartLeftLeg = 0.0, rotDartRightLeg = 0.0;
 float rotBuzzHead = 0.0, rotBuzzLeftarm = 0.0, rotBuzzLeftForeArm = 0.0, rotBuzzLeftHand = 0.0;
 int modelSelected = 0;
 bool enableCountSelected = true;
 
+//PROTAGONIST VARIABLES
+const int IndexAnimationIdle = 9;
+const int IndexAnimationWalk = 16;
+const int IndexAnimationShoot = 1;
+const int IndexAnimationRunBack=17;
+const int IndexAnimationMoveRight = 19;
+const int IndexAnimationMoveLeft = 18;
+int animationProtagonistIndex=9;
+bool ProtagonistIsShooting = false;
+// Variables Joystick
+int presentJoystick;
+GLFWgamepadstate state;
 // Variables to animations keyframes
 bool saveFrame = false, availableSave = true;
 std::ofstream myfile;
@@ -332,6 +363,26 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	modelBuzzLeftHand.loadModel("../models/buzz/buzzlightyLeftHand.obj");
 	modelBuzzLeftHand.setShader(&shaderMulLighting);
 
+	//Mayow
+	mayowModelAnimate.loadModel("../models/mayow/personaje2.fbx");
+	mayowModelAnimate.setShader(&shaderMulLighting);
+	//Cowboy
+	cowboyModelAnimate.loadModel("../models/cowboy/Character Running.fbx");
+	cowboyModelAnimate.setShader(&shaderMulLighting);
+	//guardian
+	guardianModeleAnimate.loadModel("../models/boblampclean/boblampclean.md5mesh");
+	guardianModeleAnimate.setShader(&shaderMulLighting);
+
+	//New models carl hunter
+	CarlModelAnimate.loadModel("../models/carlRobot/model.fbx");
+	CarlModelAnimate.setShader(&shaderMulLighting);
+
+	ProtagonistModelAnimate.loadModel("../models/SpaceSuit/Spacesuit2.fbx");
+	ProtagonistModelAnimate.setShader(&shaderMulLighting);
+
+	HunterModelAnimate.loadModel("../models/Hunter/model.fbx");
+	HunterModelAnimate.setShader(&shaderMulLighting);
+
 	camera->setPosition(glm::vec3(0.0, 3.0, 4.0));
 	
 	// Carga de texturas para el skybox
@@ -492,6 +543,10 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 		std::cout << "Fallo la carga de textura" << std::endl;
 	textureLandingPad.freeImage(); // Liberamos memoria
 
+	//Check JoyStick
+	presentJoystick = glfwJoystickPresent(GLFW_JOYSTICK_1);
+	std::cout << "Joystick is " << presentJoystick;
+
 }
 
 void destroy() {
@@ -543,6 +598,16 @@ void destroy() {
 	modelBuzzLeftForeArm.destroy();
 	modelBuzzLeftHand.destroy();
 	modelBuzzTorso.destroy();
+
+	//DestroyExampleModels
+	mayowModelAnimate.destroy();
+	cowboyModelAnimate.destroy();
+	guardianModeleAnimate.destroy();
+
+	//DestroyNewModels
+	CarlModelAnimate.destroy();
+	HunterModelAnimate.destroy();
+	ProtagonistModelAnimate.destroy();
 
 	// Textures Delete
 	glBindTexture(GL_TEXTURE_2D, 0);
@@ -748,6 +813,37 @@ bool processInput(bool continueApplication) {
 	else if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
 		modelMatrixBuzz = glm::translate(modelMatrixBuzz, glm::vec3(0.0, 0.0, -0.02));
 
+	//Controles Protagonist
+	
+	if (glfwGetGamepadState(GLFW_JOYSTICK_1, &state)){
+		//Movimiento axis XZ
+		float AxisLeftUpDonw = state.axes[GLFW_GAMEPAD_AXIS_LEFT_Y];
+		float AxisLeftX = state.axes[GLFW_GAMEPAD_AXIS_LEFT_X];
+		float AxisRightX= state.axes[GLFW_GAMEPAD_AXIS_RIGHT_X];
+		if( (AxisLeftUpDonw>0.5 || AxisLeftUpDonw<-0.5) || (AxisLeftX>0.5 || AxisLeftX<-0.5) ){
+			modelMatrixProtagonist = glm::translate(modelMatrixProtagonist, glm::vec3(0.02*AxisLeftX*-1, 0.0, 0.02*AxisLeftUpDonw*-1));
+			if(AxisLeftX<-0.5){
+				animationProtagonistIndex= IndexAnimationMoveLeft;
+			}else if(AxisLeftX>0.5){
+				animationProtagonistIndex=IndexAnimationMoveRight ;
+			}else if (AxisLeftUpDonw>0.5 ){
+				animationProtagonistIndex=IndexAnimationRunBack;
+			}else if (AxisLeftUpDonw <-0.5){
+				animationProtagonistIndex= IndexAnimationWalk;
+			}
+		}
+		if(AxisRightX!=0){
+			modelMatrixProtagonist = glm::rotate(modelMatrixProtagonist,0.02f*AxisRightX*-1,glm::vec3(0,1,0));
+		}
+		//Boton de ataque
+		if(state.buttons[GLFW_GAMEPAD_BUTTON_X] == GLFW_PRESS){
+			animationProtagonistIndex=IndexAnimationShoot;
+			ProtagonistIsShooting=true;
+		}else if(!state.buttons[GLFW_GAMEPAD_BUTTON_X] == GLFW_PRESS){
+			ProtagonistIsShooting=false;
+		}
+	}
+
 	glfwPollEvents();
 	return continueApplication;
 }
@@ -776,6 +872,20 @@ void applicationLoop() {
 	modelMatrixDart = glm::translate(modelMatrixDart, glm::vec3(3.0, 0.0, 20.0));
 
 	modelMatrixBuzz = glm::translate(modelMatrixBuzz, glm::vec3(15.0, 0.0, -10.0));
+
+	//New models example positions
+
+	modelMatrixMayow = glm::translate(modelMatrixMayow,glm::vec3(13.0f,0.05f,-5.0f));
+	modelMatrixMayow = glm::rotate(modelMatrixMayow, glm::radians(-90.0f), glm::vec3(0.0,1.0,0.0));
+	modelMatrixCowboy = glm::translate(modelMatrixCowboy,glm::vec3(13.0f,0.05f,0.0f));
+	modelMatrixGuardian = glm::translate(modelMatrixGuardian,glm::vec3(10.0f,0.05f,-5.0f));
+
+	//New models hunter carl positions
+
+	modelMatrixCarl = glm::translate(modelMatrixCarl,glm::vec3(5.0f,0.35f,-1.0f));
+	modelMatrixHunter = glm::translate(modelMatrixHunter,glm::vec3(3.0f,0.08f,1.0f));
+	modelMatrixHunter = glm::rotate(modelMatrixHunter, glm::radians(180.0f), glm::vec3(0.0,1.0,0.0));
+	modelMatrixProtagonist = glm::translate(modelMatrixProtagonist, glm::vec3(5.0f,0.15f,-2.0f));
 
 	// Variables to interpolation key frames
 	fileName = "../animaciones/animation_dart_joints.txt";
@@ -1111,6 +1221,35 @@ void applicationLoop() {
 		modelMatrixLeftHand = glm::rotate(modelMatrixLeftHand, glm::radians(-45.0f), glm::vec3(0, 1, 0));
 		modelMatrixLeftHand = glm::translate(modelMatrixLeftHand, glm::vec3(-0.416066, -0.587046, -0.076258));
 		modelBuzzLeftHand.render(modelMatrixLeftHand);
+
+		/********************************************* 
+		* Objetos animados por huesos
+		*/
+		glm::mat4 modelMatrixCowboyBody = glm::mat4(modelMatrixCowboy); // new variable for scaling
+		modelMatrixCowboyBody = glm::scale(modelMatrixCowboyBody,glm::vec3(0.001f));
+		cowboyModelAnimate.render(modelMatrixCowboyBody);
+
+		glm::mat4 modelMatrixGuardianBody = glm::mat4(modelMatrixGuardian); // new variable for scaling
+		modelMatrixGuardianBody = glm::scale(modelMatrixGuardianBody,glm::vec3(0.021f));
+		guardianModeleAnimate.render(modelMatrixGuardianBody);
+
+		//New models
+
+		glm::mat4 modelMatrixCarlBody = glm::mat4(modelMatrixCarl); // new variable for scaling
+		modelMatrixCarlBody = glm::scale(modelMatrixCarlBody,glm::vec3(0.04f));
+		CarlModelAnimate.render(modelMatrixCarlBody);
+
+		glm::mat4 modelMatrixHunterBody = glm::mat4(modelMatrixHunter); // new variable for scaling
+		modelMatrixHunterBody = glm::scale(modelMatrixHunterBody,glm::vec3(0.01f));
+		HunterModelAnimate.setAnimationIndex(1);
+		HunterModelAnimate.render(modelMatrixHunterBody);
+
+		glm::mat4 modelMatrixProtagonistBody = glm::mat4(modelMatrixProtagonist); // new variable for scaling
+		//modelMatrixProtagonistBody = glm::scale(modelMatrixProtagonistBody,glm::vec3(0.01f));
+		ProtagonistModelAnimate.setAnimationIndex(animationProtagonistIndex);
+		ProtagonistModelAnimate.render(modelMatrixProtagonist);
+		//if (!ProtagonistIsShooting)
+		animationProtagonistIndex=IndexAnimationIdle;
 
 		/*******************************************
 		 * Skybox
