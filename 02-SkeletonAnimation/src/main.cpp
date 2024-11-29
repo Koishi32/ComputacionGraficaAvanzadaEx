@@ -545,8 +545,7 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 
 	//Check JoyStick
 	presentJoystick = glfwJoystickPresent(GLFW_JOYSTICK_1);
-	std::cout << "Joystick is " << presentJoystick;
-
+	std::cout << "Joystick is " << presentJoystick<< std::endl;   
 }
 
 void destroy() {
