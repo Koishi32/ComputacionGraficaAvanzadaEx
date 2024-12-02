@@ -1805,7 +1805,7 @@ void applicationLoop() {
 		boxIntro.render();
 		glDisable(GL_BLEND);
 
-		modelText->render("Texto en OpenGL", -1, 0);
+		modelText->render("Texto en OpenGL",-1,0,0,1,0,35);
 
 		/*********************Prueba de colisiones****************************/
 		for (std::map<std::string,

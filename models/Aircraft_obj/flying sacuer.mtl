@@ -1,4 +1,4 @@
-# Blender 4.0.1 MTL File: 'None'
+# Blender 4.0.1 MTL File: 'Nave.blend'
 # www.blender.org
 
 newmtl NewComb
@@ -9,4 +9,14 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.450000
 d 1.000000
 illum 2
-map_Kd ShipTexture.jpg
+map_Kd ShipTexture.png
+
+newmtl NewComb2
+Ns 569.338867
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+illum 2
+map_Kd Opacity.png
+map_d Opacity.png
