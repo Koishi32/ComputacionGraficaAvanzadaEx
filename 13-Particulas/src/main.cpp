@@ -74,7 +74,7 @@ Shader shaderDepth;
 // Shader para visualizar el buffer de profundidad
 Shader shaderViewDepth;
 //Shader para las particulas de fountain
-/*Shader shaderParticlesFountain;*/
+Shader textureParticlesLazer;
 
 std::shared_ptr<Camera> camera(new ThirdPersonCamera());
 float distanceFromTarget = 7.0;
@@ -147,7 +147,7 @@ GLuint textureCespedID, textureWallID, textureWindowID, textureHighwayID, textur
 GLuint textureTerrainRID, textureTerrainGID, textureTerrainBID, textureTerrainBlendMapID;
 GLuint skyboxTextureID;
 GLuint textureInit1ID, textureInit2ID, textureActivaID, textureScreenID;
-GLuint textureParticleFountainID;
+GLuint textureParticlesLazerID;
 
 bool iniciaPartida = false, presionarOpcion = false;
 
@@ -253,10 +253,11 @@ std::vector<float> lamp2Orientation = {
 };
 
 // Blending model unsorted
-std::map<std::string, glm::vec3> blendingUnsorted = {
+std::map<std::string, glm::vec3> blendingUnsorted = { // transparentes ordern depues de solidos, se tiene que ordenar desde el mas lejano al mas cercano
 		{"aircraft", glm::vec3(10.0, 0.0, -17.5)},
 		{"lambo", glm::vec3(23.0, 0.0, 0.0)},
-		{"heli", glm::vec3(5.0, 10.0, -5.0)}
+		{"heli", glm::vec3(5.0, 10.0, -5.0)},
+		{"LazerSource",glm::vec3(0.0)} //Actualizar con modelo de pivote
 };
 
 double deltaTime;
@@ -311,6 +312,12 @@ std::vector<bool> sourcesPlay = {true, true, true};
 // Framesbuffers
 GLuint depthMap, depthMapFBO;
 
+//Definicion de variables para el sistema de particulas de Rayo
+GLuint initVel,startTime;
+GLuint VAOParticles;
+GLuint nParticles = 200;
+double currTimeParticlesAnimation, lastTimeParticlesAnimation;
+
 // Se definen todos las funciones.
 void reshapeCallback(GLFWwindow *Window, int widthRes, int heightRes);
 void keyCallback(GLFWwindow *window, int key, int scancode, int action,
@@ -323,6 +330,64 @@ void init(int width, int height, std::string strTitle, bool bFullScreen);
 void destroy();
 bool processInput(bool continueApplication = true);
 
+void initParticleBuffers(){
+	// Generrar los buffers
+	glGenBuffers(1,&initVel);
+	glGenBuffers(1,&startTime);
+	// Reserva de memoria para los buffers
+	int sizeInitVel = nParticles * 3 * sizeof(GL_FLOAT);
+	int sizeStartTime = nParticles * sizeof(GL_FLOAT);
+	glBindBuffer(GL_ARRAY_BUFFER, initVel);
+	glBufferData(GL_ARRAY_BUFFER, sizeInitVel,NULL,GL_STATIC_DRAW);
+	glBindBuffer(GL_ARRAY_BUFFER, startTime);
+	glBufferData(GL_ARRAY_BUFFER, sizeStartTime,NULL,GL_STATIC_DRAW);
+
+	// Generar la velocidad inicial con velocidades aleatorias
+	glm::vec3 v(0.0f);
+	float velocity,theta,phi;
+	GLfloat *data = new GLfloat[nParticles *3];
+	for (unsigned int i=0;i<nParticles;i++){
+		theta = glm::mix(0.0f,glm::pi<float>() / 6.0f, ((float) rand() / RAND_MAX)); //aleatorios para la funcin esferica
+		phi = glm::mix(0.0f,glm::two_pi<float>() , ((float) rand() / RAND_MAX));
+		v.x = sinf(theta) * cosf(phi);
+		v.y = cosf(theta/2.0f); // Cambiar para que se mueva poco en y
+		v.z = sinf(theta) * sinf(phi); //direcciones aeatorias
+
+		velocity=glm::mix(0.6f,0.8f,((float) rand() / RAND_MAX)); //magnitud aleatoria
+		v = glm::normalize(v) * velocity;
+
+		data[3*i] = v.x;
+		data[3*i+1] = v.y;
+		data[3*i+2] = v.z;
+	}
+	glBindBuffer(GL_ARRAY_BUFFER,initVel);
+	glBufferSubData(GL_ARRAY_BUFFER,0,sizeInitVel,data);
+	delete[] data;
+	// Tiempo inicial de la particula (Cuando nace)
+	data = new GLfloat[nParticles];
+	float time =0.0f;
+	float rate =0.00075f;
+	for (unsigned int i=0; i < nParticles;i++){
+		data[i] = time;
+		time += rate;
+	}
+	glBindBuffer(GL_ARRAY_BUFFER,startTime);
+	glBufferSubData(GL_ARRAY_BUFFER,0,sizeStartTime,data);
+	delete[] data;
+	glBindBuffer(GL_ARRAY_BUFFER,0);
+
+	glGenVertexArrays(1,&VAOParticles); //con el VAOParticles enlazado ya no se necesita reconfigurar, solo se una VAO
+	glBindVertexArray(VAOParticles);
+	glBindBuffer(GL_ARRAY_BUFFER,initVel);
+	glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,0,NULL);
+	glEnableVertexAttribArray(0);
+
+	glBindBuffer(GL_ARRAY_BUFFER,startTime);
+	glVertexAttribPointer (1,1,GL_FLOAT,GL_FALSE,0,NULL);
+	glEnableVertexAttribArray(1);
+
+	glBindVertexArray(0);
+}
 // Implementacion de todas las funciones.
 void init(int width, int height, std::string strTitle, bool bFullScreen) {
 
@@ -385,7 +450,7 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	shaderTexture.initialize("../Shaders/texturizado.vs", "../Shaders/texturizado.fs");
 	shaderViewDepth.initialize("../Shaders/texturizado.vs", "../Shaders/texturizado_depth_view.fs");
 	shaderDepth.initialize("../Shaders/shadow_mapping_depth.vs", "../Shaders/shadow_mapping_depth.fs");
-	/*shaderParticlesFountain.initialize("../Shaders/particlesFountain.vs", "../Shaders/particlesFountain.fs");*/
+	textureParticlesLazer.initialize("../Shaders/particlesFountain.vs", "../Shaders/particlesFountain.fs");
 
 	// Inicializacion de los objetos.
 	skyboxSphere.init();
@@ -828,23 +893,23 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	textureScreen.freeImage(); // Liberamos memoria
 
 	// Definiendo la textura
-	Texture textureParticlesFountain("../Textures/bluewater.png");
-	textureParticlesFountain.loadImage(); // Cargar la textura
-	glGenTextures(1, &textureParticleFountainID); // Creando el id de la textura del landingpad
-	glBindTexture(GL_TEXTURE_2D, textureParticleFountainID); // Se enlaza la textura
+	Texture textureParticlesLazer("../Textures/bluewater.png");
+	textureParticlesLazer.loadImage(); // Cargar la textura
+	glGenTextures(1, &textureParticlesLazerID); // Creando el id de la textura del landingpad
+	glBindTexture(GL_TEXTURE_2D, textureParticlesLazerID); // Se enlaza la textura
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // Wrapping en el eje u
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT); // Wrapping en el eje v
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // Filtering de minimización
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Filtering de maximimizacion
-	if(textureParticlesFountain.getData()){
+	if(textureParticlesLazer.getData()){
 		// Transferir los datos de la imagen a la tarjeta
-		glTexImage2D(GL_TEXTURE_2D, 0, textureParticlesFountain.getChannels() == 3 ? GL_RGB : GL_RGBA, textureParticlesFountain.getWidth(), textureParticlesFountain.getHeight(), 0,
-		textureParticlesFountain.getChannels() == 3 ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, textureParticlesFountain.getData());
+		glTexImage2D(GL_TEXTURE_2D, 0, textureParticlesLazer.getChannels() == 3 ? GL_RGB : GL_RGBA, textureParticlesLazer.getWidth(), textureParticlesLazer.getHeight(), 0,
+		textureParticlesLazer.getChannels() == 3 ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, textureParticlesLazer.getData());
 		glGenerateMipmap(GL_TEXTURE_2D);
 	}
 	else 
 		std::cout << "Fallo la carga de textura" << std::endl;
-	textureParticlesFountain.freeImage(); // Liberamos memoria
+	textureParticlesLazer.freeImage(); // Liberamos memoria
 
 	/*******************************************
 	 * OpenAL init
@@ -926,6 +991,9 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	glDrawBuffer(GL_NONE);
 	glReadBuffer(GL_NONE);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	// Inicializacion del los datos de la particula 
+	initParticleBuffers();
 }
 
 void destroy() {
@@ -939,7 +1007,7 @@ void destroy() {
 	shaderMulLighting.destroy();
 	shaderSkybox.destroy();
 	shaderTerrain.destroy();
-	/*shaderParticlesFountain.destroy();*/
+	textureParticlesLazer.destroy();
 
 	// Basic objects Delete
 	skyboxSphere.destroy();
@@ -1010,11 +1078,18 @@ void destroy() {
 	glDeleteTextures(1, &textureInit1ID);
 	glDeleteTextures(1, &textureInit2ID);
 	glDeleteTextures(1, &textureScreenID);
-	glDeleteTextures(1, &textureParticleFountainID);
+	glDeleteTextures(1, &textureParticlesLazerID);
 
 	// Cube Maps Delete
 	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 	glDeleteTextures(1, &skyboxTextureID);
+
+	// Liberar los datos del buffer de las particulas
+	glBindBuffer(GL_ARRAY_BUFFER,0);
+	glDeleteBuffers(1,&initVel);
+	glDeleteBuffers(1,&startTime);
+	glBindVertexArray(0);
+	glDeleteVertexArrays(1,&VAOParticles);
 }
 
 void reshapeCallback(GLFWwindow *Window, int widthRes, int heightRes) {
@@ -1658,6 +1733,8 @@ void renderAlphaScene(bool render = true){
 	blendingUnsorted.find("lambo")->second = glm::vec3(modelMatrixLambo[3]);
 	// Update the helicopter
 	blendingUnsorted.find("heli")->second = glm::vec3(modelMatrixHeli[3]);
+	//Update Lazer qith player possition
+	blendingUnsorted.find("LazerSource")-> second= glm::vec3(modelMatrixFountain[3]);
 
 	/**********
 	 * Sorter with alpha objects
@@ -1711,6 +1788,31 @@ void renderAlphaScene(bool render = true){
 			modelMatrixHeliHeli = glm::rotate(modelMatrixHeliHeli, rotHelHelY, glm::vec3(0, 1, 0));
 			modelMatrixHeliHeli = glm::translate(modelMatrixHeliHeli, glm::vec3(0.0, 0.0, 0.249548));
 			modelHeliHeli.render(modelMatrixHeliHeli);
+		} else if (render && it->second.first.compare("LazerSource")==0){
+			//Se renderiza el sistema de particulas
+			glm::mat4 modelMatrixParticlesLazer = glm::mat4(1.0);
+			modelMatrixParticlesLazer = glm::translate(modelMatrixParticlesLazer,it->second.second);
+			modelMatrixParticlesLazer[3][1] = terrain.getHeightTerrain(modelMatrixParticlesLazer[3][0],modelMatrixParticlesLazer[3][2]) + 4.2;
+			modelMatrixParticlesLazer = glm::scale(modelMatrixParticlesLazer,glm::vec3(1.0f));
+			currTimeParticlesAnimation = TimeManager::Instance().GetTime();
+			if(currTimeParticlesAnimation - lastTimeParticlesAnimation > 0.5f){ //tiempo actual menos ultima medicion mayor a 10, termino animacion
+				lastTimeParticlesAnimation = currTimeParticlesAnimation; // Reiniciar animacion
+			}
+			glDepthMask(GL_FALSE);
+			// Particle size
+			glPointSize (5.0f);
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, textureParticlesLazerID);
+			textureParticlesLazer.turnOn();
+			textureParticlesLazer.setFloat("Time",float (currTimeParticlesAnimation - lastTimeParticlesAnimation)); // segundo desde que inicio la animacion
+			textureParticlesLazer.setFloat("ParticleLifetime",0.5f);
+			textureParticlesLazer.setInt("ParticleTex",0);
+			textureParticlesLazer.setVectorFloat3("Gravity",glm::value_ptr(glm::vec3(0.0f,-0.1f,0.0f)));
+			textureParticlesLazer.setMatrix4("model",1,false,glm::value_ptr(modelMatrixParticlesLazer));
+			glBindVertexArray(VAOParticles);
+			glDrawArrays(GL_POINTS,0,nParticles);
+			glDepthMask(GL_TRUE);
+			textureParticlesLazer.turnOff();
 		}
 	}
 	glEnable(GL_CULL_FACE);
@@ -1727,7 +1829,7 @@ void renderAlphaScene(bool render = true){
 		boxIntro.render();
 		glDisable(GL_BLEND);
 
-		modelText->render("Texto en OpenGL", -1, 0);
+		modelText->render("Texto en OpenGL", -1,0,0,1,0,35);
 	}
 }
 
@@ -1873,10 +1975,10 @@ void applicationLoop() {
 		shaderTerrain.setMatrix4("lightSpaceMatrix", 1, false,
 				glm::value_ptr(lightSpaceMatrix));
 		// Settea la matriz de vista y projection al shader para el fountain
-		/*shaderParticlesFountain.setMatrix4("projection", 1, false,
+		textureParticlesLazer.setMatrix4("projection", 1, false,
 				glm::value_ptr(projection));
-		shaderParticlesFountain.setMatrix4("view", 1, false,
-				glm::value_ptr(view));*/
+		textureParticlesLazer.setMatrix4("view", 1, false,
+				glm::value_ptr(view));
 
 		/*******************************************
 		 * Propiedades de neblina

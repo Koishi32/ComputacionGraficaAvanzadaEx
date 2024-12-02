@@ -211,7 +211,10 @@ int numPasosBuzz = 0;
 // Var animate helicopter
 float rotHelHelY = 0.0;
 float rotHelHelBack = 0.0;
-
+float rotNave=0.0f;
+float currentNaveHeight=0.0f,NaveStep=0.02f;
+const float LimitNaveHeight=4.0f;
+bool GoUpNave = true;
 // Var animate lambo dor
 int stateDoor = 0;
 float dorRotCount = 0.0;
@@ -1147,7 +1150,7 @@ void applicationLoop() {
 
 	modelMatrixHeli = glm::translate(modelMatrixHeli, glm::vec3(5.0, 10.0, -5.0));
 
-	modelMatrixAircraft = glm::translate(modelMatrixAircraft, glm::vec3(10.0, 2.0, -17.5));
+	modelMatrixAircraft = glm::translate(modelMatrixAircraft, glm::vec3(10.0, 3.0, -17.5));
 
 	modelMatrixLambo = glm::translate(modelMatrixLambo, glm::vec3(23.0, 0.0, 0.0));
 
@@ -1572,7 +1575,8 @@ void applicationLoop() {
 		//FLying Suacer Part
 		
 		glm::mat4 modelMatrixmodelAircraftVehiculeBody = glm::mat4(modelMatrixAircraft);
-		modelMatrixmodelAircraftVehiculeBody[3][1]=  terrain.getHeightTerrain(modelMatrixmodelAircraftVehiculeBody[3][0], modelMatrixmodelAircraftVehiculeBody[3][2]) + 2.0;
+		modelMatrixmodelAircraftVehiculeBody[3][1]= terrain.getHeightTerrain(modelMatrixmodelAircraftVehiculeBody[3][0], modelMatrixmodelAircraftVehiculeBody[3][2]) +3.0+ currentNaveHeight;
+		modelMatrixmodelAircraftVehiculeBody = glm::rotate(modelMatrixmodelAircraftVehiculeBody, rotNave, glm::vec3(0, 1, 0));
 		modelAircraftVehicule.render(modelMatrixmodelAircraftVehiculeBody);
 
 		/**********Render de objetos con transparencia************** */
@@ -1583,7 +1587,7 @@ void applicationLoop() {
 		for(;itblendSorted != blendingSorted.rend();itblendSorted++){
 			if(itblendSorted->second.first.compare("aircraft") ==0 ){
 				glm::mat4 modelMatrixAircraftBlend = glm::mat4(modelMatrixAircraft);
-				modelMatrixAircraftBlend[3][1] = terrain.getHeightTerrain(modelMatrixAircraftBlend[3][0], modelMatrixAircraftBlend[3][2]) + 2.0;
+				modelMatrixAircraftBlend[3][1] = terrain.getHeightTerrain(modelMatrixAircraftBlend[3][0], modelMatrixAircraftBlend[3][2]) + 3.0+currentNaveHeight;
 				modelAircraft.render(modelMatrixAircraftBlend);
 
 			}else if(itblendSorted->second.first.compare("lambo") ==0 ){
@@ -2053,6 +2057,21 @@ void applicationLoop() {
 			break;
 		}
 
+		//Maquina estado Nave
+		rotNave+=0.02;
+		if(!GoUpNave){
+			NaveStep = abs(NaveStep)*-1;
+			currentNaveHeight+=NaveStep;
+			if(currentNaveHeight <0){
+				GoUpNave=true;
+			}
+		}else if(GoUpNave){
+			NaveStep = abs(NaveStep);
+			currentNaveHeight+=NaveStep;
+			if(currentNaveHeight > LimitNaveHeight){
+				GoUpNave=false;
+			}
+		}
 		// Constantes de animaciones
 		rotHelHelY += 0.5;
 		rotHelHelBack += 0.5;
