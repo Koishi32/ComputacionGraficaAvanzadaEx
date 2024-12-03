@@ -1405,10 +1405,10 @@ void applicationLoop() {
 		glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
 		glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
 		glClear(GL_DEPTH_BUFFER_BIT);
-		//glCullFace(GL_FRONT);
+		//glCullFace(GL_FRONT);   // DESCOMENTAR PARA NO VER EL AREA DONDE SE HARA LA SOMBRA
 		prepareDepthScene();
 		renderScene(false);
-		//glCullFace(GL_BACK);
+		//glCullFace(GL_BACK); // DESCOMENTAR PARA NO VER EL AREA DONDE SE HARA LA SOMBRA
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		/*******************************************
