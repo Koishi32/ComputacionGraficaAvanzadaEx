@@ -86,20 +86,10 @@ Box boxLightViewBox;
 // Models complex instances
 Model modelRock;
 Model modelAircraft;
-Model modelHeliChasis;
-Model modelHeliHeli;
-Model modelLambo;
-Model modelLamboLeftDor;
-Model modelLamboRightDor;
-Model modelLamboFrontLeftWheel;
-Model modelLamboFrontRightWheel;
-Model modelLamboRearLeftWheel;
-Model modelLamboRearRightWheel;
 
 //Example Models 
 Model mayowModelAnimate; 
-Model cowboyModelAnimate; 
-Model guardianModeleAnimate; 
+
 //New Carl Hunter Robot 
 Model CarlModelAnimate; 
 Model HunterModelAnimate; 
@@ -115,10 +105,11 @@ Model modelGrass;
 Model modelFountain;
 // Model animate instance
 // Terrain model instance
-Terrain terrain(-1, -1, 200, 16, "../Textures/heightmap.png");
+Terrain terrain(-1,-1, 200,1, "../Textures/MyTextures/MapaMarsHeightMap2.png"); 
 
-GLuint textureCespedID, textureWallID, textureWindowID, textureHighwayID, textureLandingPadID;
-GLuint textureTerrainBackgroundID, textureTerrainRID, textureTerrainGID, textureTerrainBID, textureTerrainBlendMapID;
+GLuint textureCraterID, textureWallID, textureWindowID, textureHighwayID, textureLandingPadID;
+GLuint textureTerrainBackgroundID; //Shadow Map
+GLuint textureTerrainRID, textureTerrainGID, textureTerrainBID, textureTerrainBlendMapID;
 GLuint textureParticleFountainID, textureParticleFireID, texId;
 GLuint skyboxTextureID;
 
@@ -174,14 +165,6 @@ GLFWgamepadstate state;
 
 int animationIndex = 1;
 
-
-// Var animate helicopter
-float rotHelHelY = 0.0;
-
-// Var animate lambo dor
-int stateDoor = 0;
-float dorRotCount = 0.0;
-
 // Lamps positions
 std::vector<glm::vec3> lamp1Position = { glm::vec3(-7.03, 0, -19.14), glm::vec3(
 		24.41, 0, -34.57), glm::vec3(-10.15, 0, -54.10) };
@@ -193,9 +176,7 @@ std::vector<float> lamp2Orientation = {21.37 + 90, -65.0 + 90};
 // Blending model unsorted
 std::map<std::string, glm::vec3> blendingUnsorted = {
 		{"aircraft", glm::vec3(10.0, 0.0, -17.5)},
-		{"lambo", glm::vec3(23.0, 0.0, 0.0)},
-		{"heli", glm::vec3(5.0, 10.0, -5.0)},
-		{"fountain", glm::vec3(5.0, 0.0, -40.0)},
+		{"fountain", glm::vec3(5.0, 0.0, -40.0)}, // Change For lazer
 		{"fire", glm::vec3(0.0, 0.0, 7.0)}
 };
 
@@ -525,27 +506,6 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	terrain.setShader(&shaderTerrain);
 	terrain.setPosition(glm::vec3(100, 0, 100));
 
-	// Helicopter
-	modelHeliChasis.loadModel("../models/Helicopter/Mi_24_chasis.obj");
-	modelHeliChasis.setShader(&shaderMulLighting);
-	modelHeliHeli.loadModel("../models/Helicopter/Mi_24_heli.obj");
-	modelHeliHeli.setShader(&shaderMulLighting);
-	// Lamborginhi
-	modelLambo.loadModel("../models/Lamborginhi_Aventador_OBJ/Lamborghini_Aventador_chasis.obj");
-	modelLambo.setShader(&shaderMulLighting);
-	modelLamboLeftDor.loadModel("../models/Lamborginhi_Aventador_OBJ/Lamborghini_Aventador_left_dor.obj");
-	modelLamboLeftDor.setShader(&shaderMulLighting);
-	modelLamboRightDor.loadModel("../models/Lamborginhi_Aventador_OBJ/Lamborghini_Aventador_right_dor.obj");
-	modelLamboRightDor.setShader(&shaderMulLighting);
-	modelLamboFrontLeftWheel.loadModel("../models/Lamborginhi_Aventador_OBJ/Lamborghini_Aventador_front_left_wheel.obj");
-	modelLamboFrontLeftWheel.setShader(&shaderMulLighting);
-	modelLamboFrontRightWheel.loadModel("../models/Lamborginhi_Aventador_OBJ/Lamborghini_Aventador_front_right_wheel.obj");
-	modelLamboFrontRightWheel.setShader(&shaderMulLighting);
-	modelLamboRearLeftWheel.loadModel("../models/Lamborginhi_Aventador_OBJ/Lamborghini_Aventador_rear_left_wheel.obj");
-	modelLamboRearLeftWheel.setShader(&shaderMulLighting);
-	modelLamboRearRightWheel.loadModel("../models/Lamborginhi_Aventador_OBJ/Lamborghini_Aventador_rear_right_wheel.obj");
-	modelLamboRearRightWheel.setShader(&shaderMulLighting);
-
 	//Lamp models
 	modelLamp1.loadModel("../models/Street-Lamp-Black/objLamp.obj");
 	modelLamp1.setShader(&shaderMulLighting);
@@ -565,12 +525,6 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	//Mayow 
 	mayowModelAnimate.loadModel("../models/mayow/personaje2.fbx"); 
 	mayowModelAnimate.setShader(&shaderMulLighting); 
-	//Cowboy 
-	cowboyModelAnimate.loadModel("../models/cowboy/Character Running.fbx"); 
-	cowboyModelAnimate.setShader(&shaderMulLighting); 
-	//guardian 
-	guardianModeleAnimate.loadModel("../models/boblampclean/boblampclean.md5mesh"); 
-	guardianModeleAnimate.setShader(&shaderMulLighting); 
  
 	//New models carl hunter 
 	CarlModelAnimate.loadModel("../models/carlRobot/model.fbx"); 
@@ -609,13 +563,13 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	}
 
 	// Definiendo la textura a utilizar
-	Texture textureCesped("../Textures/grassy2.png");
+	Texture textureCesped("../Textures/MyTextures/Crater.jpg");
 	// Carga el mapa de bits (FIBITMAP es el tipo de dato de la libreria)
 	textureCesped.loadImage();
 	// Creando la textura con id 1
-	glGenTextures(1, &textureCespedID);
+	glGenTextures(1, &textureCraterID);
 	// Enlazar esa textura a una tipo de textura de 2D.
-	glBindTexture(GL_TEXTURE_2D, textureCespedID);
+	glBindTexture(GL_TEXTURE_2D, textureCraterID);
 	// set the texture wrapping parameters
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT); // set texture wrapping to GL_REPEAT (default wrapping method)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
@@ -754,8 +708,8 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	// Libera la memoria de la textura
 	textureLandingPad.freeImage();
 
-	// Definiendo la textura a utilizar
-	Texture textureTerrainBackground("../Textures/grassy2.png");
+	// Definiendo la textura a utilizar  //ACTUALLY USED
+	Texture textureTerrainBackground("../Textures/MyTextures/Crater.jpg"); 
 	// Carga el mapa de bits (FIBITMAP es el tipo de dato de la libreria)
 	textureTerrainBackground.loadImage();
 	// Creando la textura con id 1
@@ -783,121 +737,80 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	// Libera la memoria de la textura
 	textureTerrainBackground.freeImage();
 
-	// Definiendo la textura a utilizar
-	Texture textureTerrainR("../Textures/mud.png");
-	// Carga el mapa de bits (FIBITMAP es el tipo de dato de la libreria)
-	textureTerrainR.loadImage();
-	// Creando la textura con id 1
-	glGenTextures(1, &textureTerrainRID);
-	// Enlazar esa textura a una tipo de textura de 2D.
-	glBindTexture(GL_TEXTURE_2D, textureTerrainRID);
-	// set the texture wrapping parameters
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // set texture wrapping to GL_REPEAT (default wrapping method)
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	// set texture filtering parameters
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	// Verifica si se pudo abrir la textura
-	if (textureTerrainR.getData()) {
-		// Transferis los datos de la imagen a memoria
-		// Tipo de textura, Mipmaps, Formato interno de openGL, ancho, alto, Mipmaps,
-		// Formato interno de la libreria de la imagen, el tipo de dato y al apuntador
-		// a los datos 
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, textureTerrainR.getWidth(), textureTerrainR.getHeight(), 0,
-		GL_RGBA, GL_UNSIGNED_BYTE, textureTerrainR.getData());
-		// Generan los niveles del mipmap (OpenGL es el ecargado de realizarlos)
-		glGenerateMipmap(GL_TEXTURE_2D);
-	} else
-		std::cout << "Failed to load texture" << std::endl;
-	// Libera la memoria de la textura
-	textureTerrainR.freeImage();
-
-	// Definiendo la textura a utilizar
-	Texture textureTerrainG("../Textures/grassFlowers.png");
-	// Carga el mapa de bits (FIBITMAP es el tipo de dato de la libreria)
-	textureTerrainG.loadImage();
-	// Creando la textura con id 1
-	glGenTextures(1, &textureTerrainGID);
-	// Enlazar esa textura a una tipo de textura de 2D.
-	glBindTexture(GL_TEXTURE_2D, textureTerrainGID);
-	// set the texture wrapping parameters
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // set texture wrapping to GL_REPEAT (default wrapping method)
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	// set texture filtering parameters
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	// Verifica si se pudo abrir la textura
-	if (textureTerrainG.getData()) {
-		// Transferis los datos de la imagen a memoria
-		// Tipo de textura, Mipmaps, Formato interno de openGL, ancho, alto, Mipmaps,
-		// Formato interno de la libreria de la imagen, el tipo de dato y al apuntador
-		// a los datos
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, textureTerrainG.getWidth(), textureTerrainG.getHeight(), 0,
-		GL_RGB, GL_UNSIGNED_BYTE, textureTerrainG.getData());
-		// Generan los niveles del mipmap (OpenGL es el ecargado de realizarlos)
-		glGenerateMipmap(GL_TEXTURE_2D);
-	} else
-		std::cout << "Failed to load texture" << std::endl;
-	// Libera la memoria de la textura
-	textureTerrainG.freeImage();
-
-	// Definiendo la textura a utilizar
-	Texture textureTerrainB("../Textures/path.png");
-	// Carga el mapa de bits (FIBITMAP es el tipo de dato de la libreria)
-	textureTerrainB.loadImage();
-	// Creando la textura con id 1
-	glGenTextures(1, &textureTerrainBID);
-	// Enlazar esa textura a una tipo de textura de 2D.
-	glBindTexture(GL_TEXTURE_2D, textureTerrainBID);
-	// set the texture wrapping parameters
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // set texture wrapping to GL_REPEAT (default wrapping method)
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	// set texture filtering parameters
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	// Verifica si se pudo abrir la textura
-	if (textureTerrainB.getData()) {
-		// Transferis los datos de la imagen a memoria
-		// Tipo de textura, Mipmaps, Formato interno de openGL, ancho, alto, Mipmaps,
-		// Formato interno de la libreria de la imagen, el tipo de dato y al apuntador
-		// a los datos
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, textureTerrainB.getWidth(), textureTerrainB.getHeight(), 0,
-		GL_RGBA, GL_UNSIGNED_BYTE, textureTerrainB.getData());
-		// Generan los niveles del mipmap (OpenGL es el ecargado de realizarlos)
-		glGenerateMipmap(GL_TEXTURE_2D);
-	} else
-		std::cout << "Failed to load texture" << std::endl;
-	// Libera la memoria de la textura
-	textureTerrainB.freeImage();
-
-	// Definiendo la textura a utilizar
-	Texture textureTerrainBlendMap("../Textures/blendMap.png");
-	// Carga el mapa de bits (FIBITMAP es el tipo de dato de la libreria)
-	textureTerrainBlendMap.loadImage(true);
-	// Creando la textura con id 1
-	glGenTextures(1, &textureTerrainBlendMapID);
-	// Enlazar esa textura a una tipo de textura de 2D.
-	glBindTexture(GL_TEXTURE_2D, textureTerrainBlendMapID);
-	// set the texture wrapping parameters
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // set texture wrapping to GL_REPEAT (default wrapping method)
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	// set texture filtering parameters
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	// Verifica si se pudo abrir la textura
-	if (textureTerrainBlendMap.getData()) {
-		// Transferis los datos de la imagen a memoria
-		// Tipo de textura, Mipmaps, Formato interno de openGL, ancho, alto, Mipmaps,
-		// Formato interno de la libreria de la imagen, el tipo de dato y al apuntador
-		// a los datos
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, textureTerrainBlendMap.getWidth(), textureTerrainBlendMap.getHeight(), 0,
-		GL_RGBA, GL_UNSIGNED_BYTE, textureTerrainBlendMap.getData());
-		// Generan los niveles del mipmap (OpenGL es el ecargado de realizarlos)
-		glGenerateMipmap(GL_TEXTURE_2D);
-	} else
-		std::cout << "Failed to load texture" << std::endl;
-	// Libera la memoria de la textura
-	textureTerrainBlendMap.freeImage();
+	Texture textureR("../Textures/MyTextures/Orillas.jpg"); 
+	textureR.loadImage(); // Cargar la textura 
+	glGenTextures(1, &textureTerrainRID); // Creando el id de la textura del landingpad 
+	glBindTexture(GL_TEXTURE_2D, textureTerrainRID); // Se enlaza la textura 
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // Wrapping en el eje u 
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT); // Wrapping en el eje v 
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // Filtering de minimización 
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Filtering de maximimizacion 
+	if(textureR.getData()){ 
+		// Transferir los datos de la imagen a la tarjeta 
+		glTexImage2D(GL_TEXTURE_2D, 0, textureR.getChannels() == 3 ? GL_RGB : GL_RGBA, textureR.getWidth(), textureR.getHeight(), 0, 
+		textureR.getChannels() == 3 ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, textureR.getData()); 
+		glGenerateMipmap(GL_TEXTURE_2D); 
+	} 
+	else  
+		std::cout << "Fallo la carga de textura" << std::endl; 
+	textureR.freeImage(); // Liberamos memoria 
+ 
+	// Definiendo la textura G iD  
+	Texture textureG("../Textures/MyTextures/Land.jpg"); 
+	textureG.loadImage(); // Cargar la textura 
+	glGenTextures(1, &textureTerrainGID); // Creando el id de la textura del landingpad 
+	glBindTexture(GL_TEXTURE_2D, textureTerrainGID); // Se enlaza la textura 
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // Wrapping en el eje u 
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT); // Wrapping en el eje v 
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // Filtering de minimización 
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Filtering de maximimizacion 
+	if(textureG.getData()){ 
+		// Transferir los datos de la imagen a la tarjeta 
+		glTexImage2D(GL_TEXTURE_2D, 0, textureG.getChannels() == 3 ? GL_RGB : GL_RGBA, textureG.getWidth(), textureG.getHeight(), 0, 
+		textureG.getChannels() == 3 ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, textureG.getData()); 
+		glGenerateMipmap(GL_TEXTURE_2D); 
+	} 
+	else  
+		std::cout << "Fallo la carga de textura" << std::endl; 
+	textureG.freeImage(); // Liberamos memoria 
+ 
+	// Definiendo la textura B iD  
+	Texture textureB("../Textures/Mytextures/PathM.jpg"); 
+	textureB.loadImage(); // Cargar la textura 
+	glGenTextures(1, &textureTerrainBID); // Creando el id de la textura del landingpad 
+	glBindTexture(GL_TEXTURE_2D, textureTerrainBID); // Se enlaza la textura 
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // Wrapping en el eje u 
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT); // Wrapping en el eje v 
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // Filtering de minimización 
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Filtering de maximimizacion 
+	if(textureB.getData()){ 
+		// Transferir los datos de la imagen a la tarjeta 
+		glTexImage2D(GL_TEXTURE_2D, 0, textureB.getChannels() == 3 ? GL_RGB : GL_RGBA, textureB.getWidth(), textureB.getHeight(), 0, 
+		textureB.getChannels() == 3 ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, textureB.getData()); 
+		glGenerateMipmap(GL_TEXTURE_2D); 
+	} 
+	else  
+		std::cout << "Fallo la carga de textura" << std::endl; 
+	textureB.freeImage(); // Liberamos memoria 
+ 
+	// Definiendo la map mezclas 
+	Texture textureBlendMap("../Textures/MyTextures/MapaMarBlendtMap.png"); 
+	textureBlendMap.loadImage(); // Cargar la textura 
+	glGenTextures(1, &textureTerrainBlendMapID); // Creando el id de la textura del landingpad 
+	glBindTexture(GL_TEXTURE_2D, textureTerrainBlendMapID); // Se enlaza la textura 
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // Wrapping en el eje u 
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT); // Wrapping en el eje v 
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // Filtering de minimización 
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Filtering de maximimizacion 
+	if(textureBlendMap.getData()){ 
+		// Transferir los datos de la imagen a la tarjeta 
+		glTexImage2D(GL_TEXTURE_2D, 0, textureBlendMap.getChannels() == 3 ? GL_RGB : GL_RGBA, textureBlendMap.getWidth(), textureBlendMap.getHeight(), 0, 
+		textureBlendMap.getChannels() == 3 ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, textureBlendMap.getData()); 
+		glGenerateMipmap(GL_TEXTURE_2D); 
+	} 
+	else  
+		std::cout << "Fallo la carga de textura" << std::endl; 
+	textureBlendMap.freeImage(); // Liberamos memoria
 
 	Texture textureParticlesFountain("../Textures/bluewater.png");
 	textureParticlesFountain.loadImage();
@@ -1100,15 +1013,6 @@ void destroy() {
 
 	// Custom objects Delete
 	modelAircraft.destroy();
-	modelHeliChasis.destroy();
-	modelHeliHeli.destroy();
-	modelLambo.destroy();
-	modelLamboFrontLeftWheel.destroy();
-	modelLamboFrontRightWheel.destroy();
-	modelLamboLeftDor.destroy();
-	modelLamboRearLeftWheel.destroy();
-	modelLamboRearRightWheel.destroy();
-	modelLamboRightDor.destroy();
 	modelRock.destroy();
 	modelLamp1.destroy();
 	modelLamp2.destroy();
@@ -1119,8 +1023,6 @@ void destroy() {
 	// Custom objects animate
 	//DestroyExampleModels 
 	mayowModelAnimate.destroy(); 
-	cowboyModelAnimate.destroy(); 
-	guardianModeleAnimate.destroy(); 
  
 	//DestroyNewModels 
 	CarlModelAnimate.destroy(); 
@@ -1129,7 +1031,7 @@ void destroy() {
 
 	// Textures Delete
 	glBindTexture(GL_TEXTURE_2D, 0);
-	glDeleteTextures(1, &textureCespedID);
+	glDeleteTextures(1, &textureCraterID);
 	glDeleteTextures(1, &textureWallID);
 	glDeleteTextures(1, &textureWindowID);
 	glDeleteTextures(1, &textureHighwayID);
@@ -1291,18 +1193,12 @@ void applicationLoop() {
 
 	matrixModelRock = glm::translate(matrixModelRock, glm::vec3(-3.0, 0.0, 2.0));
 
-	modelMatrixHeli = glm::translate(modelMatrixHeli, glm::vec3(5.0, 10.0, -5.0));
-
 	modelMatrixAircraft = glm::translate(modelMatrixAircraft, glm::vec3(10.0, 2.0, -17.5));
-
-	modelMatrixLambo = glm::translate(modelMatrixLambo, glm::vec3(23.0, 0.0, 0.0));
 
 	//New models example positions 
  
 	modelMatrixMayow = glm::translate(modelMatrixMayow,glm::vec3(13.0f,0.05f,-5.0f)); 
 	modelMatrixMayow = glm::rotate(modelMatrixMayow, glm::radians(-90.0f), glm::vec3(0.0,1.0,0.0)); 
-	modelMatrixCowboy = glm::translate(modelMatrixCowboy,glm::vec3(13.0f,0.05f,0.0f)); 
-	modelMatrixGuardian = glm::translate(modelMatrixGuardian,glm::vec3(10.0f,0.05f,-5.0f)); 
  
 	//New models hunter carl positions 
  
@@ -1310,10 +1206,6 @@ void applicationLoop() {
 	modelMatrixHunter = glm::translate(modelMatrixHunter,glm::vec3(3.0f,0.08f,1.0f)); 
 	modelMatrixHunter = glm::rotate(modelMatrixHunter, glm::radians(180.0f), glm::vec3(0.0,1.0,0.0)); 
 	modelMatrixProtagonist = glm::translate(modelMatrixProtagonist, glm::vec3(5.0f,0.15f,-2.0f)); 
-	
-	modelMatrixFountain = glm::translate(modelMatrixFountain, glm::vec3(5.0, 0.0, -40.0));
-	modelMatrixFountain[3][1] = terrain.getHeightTerrain(modelMatrixFountain[3][0] , modelMatrixFountain[3][2]) + 0.2;
-	modelMatrixFountain = glm::scale(modelMatrixFountain, glm::vec3(10.0f, 10.0f, 10.0f));
 
 	lastTime = TimeManager::Instance().GetTime();
 
@@ -1339,10 +1231,6 @@ void applicationLoop() {
 
 		std::map<std::string, bool> collisionDetection;
 
-		// Variables donde se guardan las matrices de cada articulacion por 1 frame
-		std::vector<float> matrixDartJoints;
-		std::vector<glm::mat4> matrixDart;
-
 		glm::mat4 projection = glm::perspective(glm::radians(45.0f),
 				(float) screenWidth / (float) screenHeight, 0.1f, 100.0f);
 
@@ -1360,6 +1248,9 @@ void applicationLoop() {
 		camera->setAngleTarget(angleTarget);
 		camera->updateCamera();
 		view = camera->getViewMatrix();
+
+		//shadowBox->update(screenWidth, screenHeight);
+		//glm::vec3 centerBox = shadowBox->getCenter();
 
 		// Matriz de proyección del shadow mapping
 		glm::mat4 lightProjection, lightView;
@@ -1387,7 +1278,7 @@ void applicationLoop() {
 		shaderMulLighting.setMatrix4("lightSpaceMatrix", 1, false,
 				glm::value_ptr(lightSpaceMatrix));
 		// Settea la matriz de vista y projection al shader con multiples luces
-		shaderTerrain.setMatrix4("projection", 1, false,
+		shaderTerrain.setMatrix4("projection", 1, false, // Set terrain
 					glm::value_ptr(projection));
 		shaderTerrain.setMatrix4("view", 1, false,
 				glm::value_ptr(view));
@@ -1793,34 +1684,19 @@ void applicationLoop() {
 		}
 
 		// Constantes de animaciones
-		rotHelHelY += 0.5;
 		animationIndex = 1;
 
 		/*******************************************
 		 * State machines
 		 *******************************************/
 
-		// State machine for the lambo car
-		switch(stateDoor){
-		case 0:
-			dorRotCount += 0.5;
-			if(dorRotCount > 75)
-				stateDoor = 1;
-			break;
-		case 1:
-			dorRotCount -= 0.5;
-			if(dorRotCount < 0){
-				dorRotCount = 0.0;
-				stateDoor = 0;
-			}
-			break;
-		}
+		
 
 		glfwSwapBuffers(window);
 
 
 		/****************************+
-		 * Open AL sound data
+		 * Open AL sound data USe for lazer
 		 */
 		source0Pos[0] = modelMatrixFountain[3].x;
 		source0Pos[1] = modelMatrixFountain[3].y;
@@ -1881,18 +1757,6 @@ void prepareScene(){
 
 	terrain.setShader(&shaderTerrain);
 
-	// Helicopter
-	modelHeliChasis.setShader(&shaderMulLighting);
-	modelHeliHeli.setShader(&shaderMulLighting);
-	// Lamborginhi
-	modelLambo.setShader(&shaderMulLighting);
-	modelLamboLeftDor.setShader(&shaderMulLighting);
-	modelLamboRightDor.setShader(&shaderMulLighting);
-	modelLamboFrontLeftWheel.setShader(&shaderMulLighting);
-	modelLamboFrontRightWheel.setShader(&shaderMulLighting);
-	modelLamboRearLeftWheel.setShader(&shaderMulLighting);
-	modelLamboRearRightWheel.setShader(&shaderMulLighting);
-
 	//Lamp models
 	modelLamp1.setShader(&shaderMulLighting);
 	modelLamp2.setShader(&shaderMulLighting);
@@ -1903,6 +1767,8 @@ void prepareScene(){
 
 	//Mayow
 	mayowModelAnimate.setShader(&shaderMulLighting);
+
+	//Set shaders lighting for new Models
 }
 
 void prepareDepthScene(){
@@ -1914,19 +1780,6 @@ void prepareDepthScene(){
 	modelAircraft.setShader(&shaderDepth);
 
 	terrain.setShader(&shaderDepth);
-
-	// Helicopter
-	modelHeliChasis.setShader(&shaderDepth);
-	modelHeliHeli.setShader(&shaderDepth);
-	// Lamborginhi
-	modelLambo.setShader(&shaderDepth);
-	modelLamboLeftDor.setShader(&shaderDepth);
-	modelLamboRightDor.setShader(&shaderDepth);
-	modelLamboFrontLeftWheel.setShader(&shaderDepth);
-	modelLamboFrontRightWheel.setShader(&shaderDepth);
-	modelLamboRearLeftWheel.setShader(&shaderDepth);
-	modelLamboRearRightWheel.setShader(&shaderDepth);
-
 	//Lamp models
 	modelLamp1.setShader(&shaderDepth);
 	modelLamp2.setShader(&shaderDepth);
@@ -1937,6 +1790,9 @@ void prepareDepthScene(){
 
 	//Mayow
 	mayowModelAnimate.setShader(&shaderDepth);
+	
+	//Set shaders Depth for new Models
+
 }
 
 void renderScene(bool renderParticles){
@@ -2011,7 +1867,7 @@ void renderScene(bool renderParticles){
 
 	// Fountain
 	glDisable(GL_CULL_FACE);
-	modelFountain.render(modelMatrixFountain);
+	//modelFountain.render(modelMatrixFountain); // Use for 
 	glEnable(GL_CULL_FACE);
 
 	/*******************************************
@@ -2028,15 +1884,6 @@ void renderScene(bool renderParticles){
 	modelMatrixMayowBody = glm::scale(modelMatrixMayowBody, glm::vec3(0.021, 0.021, 0.021));
 	mayowModelAnimate.setAnimationIndex(animationIndex);
 	mayowModelAnimate.render(modelMatrixMayowBody);
-
-	glm::mat4 modelMatrixCowboyBody = glm::mat4(modelMatrixCowboy); // new variable for scaling 
-	modelMatrixCowboyBody = glm::scale(modelMatrixCowboyBody,glm::vec3(0.001f)); 
-	cowboyModelAnimate.render(modelMatrixCowboyBody); 
- 
-	glm::mat4 modelMatrixGuardianBody = glm::mat4(modelMatrixGuardian); // new variable for scaling 
-	modelMatrixGuardianBody = glm::scale(modelMatrixGuardianBody,glm::vec3(0.021f)); 
-	guardianModeleAnimate.render(modelMatrixGuardianBody); 
- 	//New models 
  
 	glm::mat4 modelMatrixCarlBody = glm::mat4(modelMatrixCarl); // new variable for scaling 
 	modelMatrixCarlBody = glm::scale(modelMatrixCarlBody,glm::vec3(0.04f)); 
@@ -2058,10 +1905,6 @@ void renderScene(bool renderParticles){
 	 */
 	// Update the aircraft
 	blendingUnsorted.find("aircraft")->second = glm::vec3(modelMatrixAircraft[3]);
-	// Update the lambo
-	blendingUnsorted.find("lambo")->second = glm::vec3(modelMatrixLambo[3]);
-	// Update the helicopter
-	blendingUnsorted.find("heli")->second = glm::vec3(modelMatrixHeli[3]);
 
 	/**********
 	 * Sorter with alpha objects
@@ -2085,36 +1928,6 @@ void renderScene(bool renderParticles){
 			glm::mat4 modelMatrixAircraftBlend = glm::mat4(modelMatrixAircraft);
 			modelMatrixAircraftBlend[3][1] = terrain.getHeightTerrain(modelMatrixAircraftBlend[3][0], modelMatrixAircraftBlend[3][2]) + 2.0;
 			modelAircraft.render(modelMatrixAircraftBlend);
-		}
-		else if(it->second.first.compare("lambo") == 0){
-			// Lambo car
-			glm::mat4 modelMatrixLamboBlend = glm::mat4(modelMatrixLambo);
-			modelMatrixLamboBlend[3][1] = terrain.getHeightTerrain(modelMatrixLamboBlend[3][0], modelMatrixLamboBlend[3][2]);
-			modelMatrixLamboBlend = glm::scale(modelMatrixLamboBlend, glm::vec3(1.3, 1.3, 1.3));
-			modelLambo.render(modelMatrixLamboBlend);
-			glActiveTexture(GL_TEXTURE0);
-			glm::mat4 modelMatrixLamboLeftDor = glm::mat4(modelMatrixLamboBlend);
-			modelMatrixLamboLeftDor = glm::translate(modelMatrixLamboLeftDor, glm::vec3(1.08676, 0.707316, 0.982601));
-			modelMatrixLamboLeftDor = glm::rotate(modelMatrixLamboLeftDor, glm::radians(dorRotCount), glm::vec3(1.0, 0, 0));
-			modelMatrixLamboLeftDor = glm::translate(modelMatrixLamboLeftDor, glm::vec3(-1.08676, -0.707316, -0.982601));
-			modelLamboLeftDor.render(modelMatrixLamboLeftDor);
-			modelLamboRightDor.render(modelMatrixLamboBlend);
-			modelLamboFrontLeftWheel.render(modelMatrixLamboBlend);
-			modelLamboFrontRightWheel.render(modelMatrixLamboBlend);
-			modelLamboRearLeftWheel.render(modelMatrixLamboBlend);
-			modelLamboRearRightWheel.render(modelMatrixLamboBlend);
-			// Se regresa el cull faces IMPORTANTE para las puertas
-		}
-		else if(it->second.first.compare("heli") == 0){
-			// Helicopter
-			glm::mat4 modelMatrixHeliChasis = glm::mat4(modelMatrixHeli);
-			modelHeliChasis.render(modelMatrixHeliChasis);
-
-			glm::mat4 modelMatrixHeliHeli = glm::mat4(modelMatrixHeliChasis);
-			modelMatrixHeliHeli = glm::translate(modelMatrixHeliHeli, glm::vec3(0.0, 0.0, -0.249548));
-			modelMatrixHeliHeli = glm::rotate(modelMatrixHeliHeli, rotHelHelY, glm::vec3(0, 1, 0));
-			modelMatrixHeliHeli = glm::translate(modelMatrixHeliHeli, glm::vec3(0.0, 0.0, 0.249548));
-			modelHeliHeli.render(modelMatrixHeliHeli);
 		}
 		else if(renderParticles && it->second.first.compare("fountain") == 0){
 			/**********
