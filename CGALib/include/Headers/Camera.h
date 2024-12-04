@@ -107,7 +107,7 @@ public:
 		this->distanceFromTarget = distanceFromTarget;
 	}
 
-protected:
+public:
 	glm::vec3 position;
 	glm::vec3 front;
 	glm::vec3 up;
