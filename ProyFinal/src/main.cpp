@@ -97,7 +97,7 @@ Box boxViewDepth;
 // Models complex instances
 Model modelRock;
 Model modelAircraft;
-Model modelNave; 
+Model modelAircraftVehicule;
 Model modelLampPlant1;
 Model modelLampPlant2;
 // Modelos animados
@@ -143,7 +143,7 @@ int lastMousePosY, offsetY = 0;
 // Model matrix definitions
 glm::mat4 matrixModelRock = glm::mat4(1.0);
 glm::mat4 modelMatrixAircraft = glm::mat4(1.0);
-glm::mat4 modelMatrixNave = glm::mat4(1.0);
+glm::mat4 modelMatrixAircraftVehicule = glm::mat4(1.0f); 
 glm::mat4 modelMatrixCarl = glm::mat4(1.0f); 
 glm::mat4 modelMatrixHunter = glm::mat4(1.0f); 
 glm::mat4 modelMatrixProtagonist = glm::mat4(1.0f);
@@ -168,7 +168,7 @@ int AditionalLights=0;
 
 // Blending model unsorted
 std::map<std::string, glm::vec3> blendingUnsorted = { // transparentes ordern depues de solidos, se tiene que ordenar desde el mas lejano al mas cercano
-		{"aircraft", glm::vec3(10.0, 0.0, -17.5)},
+		{"aircraft", glm::vec3(10.0, 0.0, -17.5)}, // Set coordinates from Gimp
 		{"LazerSource",glm::vec3(0.0)} //Actualizar con modelo de pivote
 };
 
@@ -191,6 +191,11 @@ bool isJump = false;
 float GRAVITY = 1.81;
 double tmv = 0;
 double startTimeJump = 0;
+
+float rotNave=0.0f; 
+float currentNaveHeight=0.0f,NaveStep=0.02f; 
+const float LimitNaveHeight=4.0f; 
+bool GoUpNave = true;
 
 double animationDuration =0.6f; // Duration in seconds shooting animation
 double animationStartTime = 0.0f;
@@ -429,10 +434,14 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	modelRock.loadModel("../models/rock/rock.obj");
 	modelRock.setShader(&shaderMulLighting);
 
-	modelAircraft.loadModel("../models/Aircraft_obj/flying sacuer.obj"); 
+	/*modelPistol.loadModel("../models/MyPistol/sb.obj");
+	modelPistol.setShader(&shaderMulLighting);*/
+
+	modelAircraft.loadModel("../models/Aircraft_obj/Nave.obj");
 	modelAircraft.setShader(&shaderMulLighting);
-	modelNave.loadModel("../models/Aircraft_obj/Nave.obj"); 
-	modelNave.setShader(&shaderMulLighting);
+	
+	modelAircraftVehicule.loadModel("../models/Aircraft_obj/flying sacuer.obj"); 
+	modelAircraftVehicule.setShader(&shaderMulLighting); 
 	//Lamps models
 	modelLampPlant1.loadModel("../models/Lamp1/Plant_1.fbx"); 
 	modelLampPlant1.setShader(&shaderMulLighting); 
@@ -444,7 +453,7 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	CarlModelAnimate.loadModel("../models/carlRobot/model.fbx"); 
 	CarlModelAnimate.setShader(&shaderMulLighting); 
  
-	ProtagonistModelAnimate.loadModel("../models/SpaceSuit/Spacesuit2.fbx"); 
+	ProtagonistModelAnimate.loadModel("../models/SpaceSuit/SpaceSuit3.fbx"); 
 	ProtagonistModelAnimate.setShader(&shaderMulLighting); 
  
 	HunterModelAnimate.loadModel("../models/Hunter/model.fbx"); 
@@ -790,8 +799,9 @@ void destroy() {
 
 	// Custom objects Delete
 	modelAircraft.destroy();
-	modelNave.destroy();
+	modelAircraftVehicule.destroy();
 	modelRock.destroy();
+	//modelPistol.destroy();
 	modelLampPlant1.destroy();
 	modelLampPlant2.destroy();
 
@@ -970,9 +980,10 @@ void prepareScene(){
 	
 	modelRock.setShader(&shaderMulLighting);
 
-	modelAircraft.setShader(&shaderMulLighting);
+	//modelPistol.setShader(&shaderMulLighting);
 
-	modelNave.setShader(&shaderMulLighting);
+	modelAircraft.setShader(&shaderMulLighting);
+	modelAircraftVehicule.setShader(&shaderMulLighting);
 
 	//Lamp models
 	modelLampPlant1.setShader(&shaderMulLighting);
@@ -991,8 +1002,10 @@ void prepareDepthScene(){
 	
 	modelRock.setShader(&shaderDepth);
 
+	//modelPistol.setShader(&shaderDepth);
+
 	modelAircraft.setShader(&shaderDepth);
-	modelNave.setShader(&shaderDepth);
+	modelAircraftVehicule.setShader(&shaderDepth);
 
 	//Lamp models
 	modelLampPlant1.setShader(&shaderDepth);
@@ -1064,8 +1077,14 @@ void renderSolidScene(){
 	//Rock render
 	matrixModelRock[3][1] = terrain.getHeightTerrain(matrixModelRock[3][0], matrixModelRock[3][2]);
 	modelRock.render(matrixModelRock);
+
+	//PISTOL
+	//glm::mat4 ModelMatrixBodyPistol =  glm::mat4(modelMatrixProtagonist);
+	//modelPistol.render(ModelMatrixBodyPistol);
+
 	// Forze to enable the unit texture to 0 always ----------------- IMPORTANT
 	glActiveTexture(GL_TEXTURE0);
+	
 
 	for (int i =0; i < LampPlantPostion.size();i++){ 
 			LampPlantPostion[i].y = terrain.getHeightTerrain(LampPlantPostion[i].x,LampPlantPostion[i].z); 
@@ -1111,7 +1130,12 @@ void renderSolidScene(){
 	glm::mat4 modelMatrixHunterBody = glm::mat4(modelMatrixHunter); // new variable for scaling 
 	modelMatrixHunterBody = glm::scale(modelMatrixHunterBody,glm::vec3(0.01f)); 
 	HunterModelAnimate.setAnimationIndex(1); 
-	HunterModelAnimate.render(modelMatrixHunterBody); 
+	HunterModelAnimate.render(modelMatrixHunterBody);
+
+	glm::mat4 modelMatrixmodelAircraftVehiculeBody = glm::mat4(modelMatrixAircraft); 
+	modelMatrixmodelAircraftVehiculeBody[3][1]= terrain.getHeightTerrain(modelMatrixmodelAircraftVehiculeBody[3][0], modelMatrixmodelAircraftVehiculeBody[3][2]) +3.0+ currentNaveHeight; 
+	modelMatrixmodelAircraftVehiculeBody = glm::rotate(modelMatrixmodelAircraftVehiculeBody, rotNave, glm::vec3(0, 1, 0)); 
+	modelAircraftVehicule.render(modelMatrixmodelAircraftVehiculeBody);
 
 	/*******************************************
 	 * Skybox
@@ -1159,14 +1183,14 @@ void renderAlphaScene(bool render = true){
 		if(it->second.first.compare("aircraft") == 0){
 			// Render for the aircraft model
 			glm::mat4 modelMatrixAircraftBlend = glm::mat4(modelMatrixAircraft);
-			modelMatrixAircraftBlend[3][1] = terrain.getHeightTerrain(modelMatrixAircraftBlend[3][0], modelMatrixAircraftBlend[3][2]) + 2.0;
+			modelMatrixAircraftBlend[3][1] = terrain.getHeightTerrain(modelMatrixAircraftBlend[3][0], modelMatrixAircraftBlend[3][2]) + 3.0+currentNaveHeight;
 			modelAircraft.render(modelMatrixAircraftBlend);
 		}
 		else if (render && it->second.first.compare("LazerSource")==0){
 			//Se renderiza el sistema de particulas
-			glm::mat4 modelMatrixParticlesLazer = glm::mat4(1.0);
+			glm::mat4 modelMatrixParticlesLazer = glm::mat4(modelMatrixAircraft);
 			modelMatrixParticlesLazer = glm::translate(modelMatrixParticlesLazer,it->second.second);
-			modelMatrixParticlesLazer[3][1] = terrain.getHeightTerrain(modelMatrixParticlesLazer[3][0],modelMatrixParticlesLazer[3][2]) + 4.2;
+			modelMatrixParticlesLazer[3][1] = terrain.getHeightTerrain(modelMatrixParticlesLazer[3][0],modelMatrixParticlesLazer[3][2]) + 1.0;
 			modelMatrixParticlesLazer = glm::scale(modelMatrixParticlesLazer,glm::vec3(1.0f));
 			currTimeParticlesAnimation = TimeManager::Instance().GetTime();
 			if(currTimeParticlesAnimation - lastTimeParticlesAnimation > 0.5f){ //tiempo actual menos ultima medicion mayor a 10, termino animacion
@@ -1247,6 +1271,8 @@ void applicationLoop() {
 	CoordanatesGimpTemp = glm::vec3(233,0,376);
 	CoordanatesGimpTemp = TransformGIMPCoordenatesToOpenGLPixels(CoordanatesGimpTemp);
 	modelMatrixAircraft = glm::translate(modelMatrixAircraft, CoordanatesGimpTemp);
+	modelMatrixAircraft = glm::translate(modelMatrixAircraft, glm::vec3(0.0f, 3.0, 0.0)); 
+
 
 	//New models hunter carl positions 
 	
@@ -1418,8 +1444,9 @@ void applicationLoop() {
 		PointLightGeneratePlant1(glm::vec3(-0.132,1.906,-0.163)); 
 		PointLightGeneratePlant1(glm::vec3(-0.584,1.236,-0.147)); 
 		PointLightGeneratePlant1(glm::vec3(0.704,1.325,-0.227)); 
-		glm::vec3 spotPosition2 = glm::vec3{modelMatrixAircraft*glm::vec4(0,0,0,1.0)}; 
+		glm::vec3 spotPosition2 = glm::vec3{modelMatrixAircraft*glm::vec4(0.0,0.5f,0.0,1.0)};  // Localization light on ship
 		generatePointLight(spotPosition2,LampPlantPostion2.size() +LampPlantPostion.size()*3,glm::vec3(0.0,1.0,0.0),glm::vec3(1.0,1.0,0.0),glm::vec3(0.4,1.0,0.4),2.0); 
+		
 		/************Render de imagen de frente**************/
 		if(!iniciaPartida){
 			shaderTexture.setMatrix4("projection", 1, false, glm::value_ptr(glm::mat4(1.0)));
@@ -1765,10 +1792,24 @@ void applicationLoop() {
 				alSourcePlay(source[i]);
 			}
 		}
-	}
 
-	// Animation Timer
-	
+		// Animation Machine States
+		rotNave+=0.02; 
+			if(!GoUpNave){ 
+				NaveStep = abs(NaveStep)*-1; 
+				currentNaveHeight+=NaveStep; 
+				if(currentNaveHeight <0){ 
+					GoUpNave=true; 
+				} 
+			}else if(GoUpNave){ 
+				NaveStep = abs(NaveStep); 
+				currentNaveHeight+=NaveStep; 
+				if(currentNaveHeight > LimitNaveHeight){ 
+					GoUpNave=false; 
+				} 
+			}
+
+	}
 }
 
 int main(int argc, char **argv) {
