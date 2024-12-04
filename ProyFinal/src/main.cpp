@@ -175,13 +175,15 @@ std::map<std::string, glm::vec3> blendingUnsorted = { // transparentes ordern de
 double deltaTime;
 double currTime, lastTime;
 float velProtagonist=3.5f;
-const int IndexAnimationIdle = 9; 
-const int IndexAnimationWalk = 16; 
+const int IndexAnimationIdle = 3;
+const int IndexAnimationRecibeHit= 2;
+const int IndexAnimationDeath= 0;  
+const int IndexAnimationWalk = 4; 
 const int IndexAnimationShoot = 1; 
-const int IndexAnimationRunBack=17; 
-const int IndexAnimationMoveRight = 19; 
-const int IndexAnimationMoveLeft = 18; 
-int animationProtagonistIndex=9; 
+const int IndexAnimationRunBack=5; 
+const int IndexAnimationMoveRight = 7; 
+const int IndexAnimationMoveLeft = 6; 
+int animationProtagonistIndex=3; 
 // Variables Joystick 
 int presentJoystick; 
 GLFWgamepadstate state; 
@@ -453,7 +455,7 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	CarlModelAnimate.loadModel("../models/carlRobot/model.fbx"); 
 	CarlModelAnimate.setShader(&shaderMulLighting); 
  
-	ProtagonistModelAnimate.loadModel("../models/SpaceSuit/SpaceSuit3.fbx"); 
+	ProtagonistModelAnimate.loadModel("../models/SpaceSuit/SpaceSuit4.fbx"); 
 	ProtagonistModelAnimate.setShader(&shaderMulLighting); 
  
 	HunterModelAnimate.loadModel("../models/Hunter/model.fbx"); 
