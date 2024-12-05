@@ -35,6 +35,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/vector_angle.hpp>
+#include <cmath>
 
 #include "Headers/Texture.h"
 
@@ -102,7 +104,9 @@ Model modelLampPlant1;
 Model modelLampPlant2;
 // Modelos animados
 Model CarlModelAnimate; 
-Model HunterModelAnimate; 
+Model HunterModelAnimate;
+Model CarlModel2Animate; 
+Model HunterModel2Animate;
 Model ProtagonistModelAnimate; 
 
 // Terrain model instance
@@ -145,7 +149,9 @@ glm::mat4 matrixModelRock = glm::mat4(1.0);
 glm::mat4 modelMatrixAircraft = glm::mat4(1.0);
 glm::mat4 modelMatrixAircraftVehicule = glm::mat4(1.0f); 
 glm::mat4 modelMatrixCarl = glm::mat4(1.0f); 
-glm::mat4 modelMatrixHunter = glm::mat4(1.0f); 
+glm::mat4 modelMatrixHunter = glm::mat4(1.0f);
+glm::mat4 modelMatrixCarl2 = glm::mat4(1.0f); 
+glm::mat4 modelMatrixHunter2 = glm::mat4(1.0f);
 glm::mat4 modelMatrixProtagonist = glm::mat4(1.0f);
 
 //Lamps Plant  Positions contro how many and where 
@@ -174,7 +180,6 @@ std::map<std::string, glm::vec3> blendingUnsorted = { // transparentes ordern de
 };
 double deltaTime;
 double currTime, lastTime;
-float velProtagonist=3.5f;
 const int IndexAnimationIdle = 3;
 const int IndexAnimationRecibeHit= 2;
 const int IndexAnimationDeath= 0;  
@@ -188,11 +193,19 @@ int animationProtagonistIndex=3;
 int presentJoystick; 
 GLFWgamepadstate state; 
 
-// Jump and Shoot variables 
+// Jump,Movement and Shoot variables 
 bool isJump = false;
 float GRAVITY = 1.81;
 double tmv = 0;
 double startTimeJump = 0;
+float velProtagonist=12.0f;
+float angleDegreesToProtagonist=0;
+
+ float HunterMoveFordward = 1.0f;
+ float giroHunter = 0.5f;
+int HunterAnimationIndex=0;
+ float CarlMoveFordwar = 1.5f;
+ float giroCarl = 0.5f;
 
 float rotNave=0.0f; 
 float currentNaveHeight=0.0f,NaveStep=0.02f; 
@@ -261,7 +274,9 @@ void WaitTime();
 void PointLightGeneratePlant1(glm::vec3 PositionInsidePlant); 
 void  generatePointLight(glm::vec3 LampPlantPostion2,int i,glm::vec3 DiffuseColor,glm::vec3 ambient,glm::vec3 specular,float quadratic);
 glm::vec3 TransformGIMPCoordenatesToOpenGLPixels(glm::vec3 coordenadas);
-
+void setPositionsFromGimpMamp();
+glm::mat4  LookTowardsObject(glm::mat4 MyOrgPos, glm::mat4 Objective);
+glm::mat4 MoveTowardsObject(glm::mat4 MyOrgPos, glm::mat4 Objective);
 glm::vec3 TransformGIMPCoordenatesToOpenGLPixels(glm::vec3 coordenadas){
 		glm::vec3 resultado = glm::vec3(0,0,0);
 		resultado.x = (coordenadas.x - 256) / 2.56;
@@ -453,13 +468,19 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 
 	//New models carl, hunter and  protagonist
 	CarlModelAnimate.loadModel("../models/carlRobot/model.fbx"); 
-	CarlModelAnimate.setShader(&shaderMulLighting); 
- 
+	CarlModelAnimate.setShader(&shaderMulLighting);
+
+	CarlModel2Animate.loadModel("../models/carlRobot/model.fbx"); 
+	CarlModel2Animate.setShader(&shaderMulLighting); 
+
 	ProtagonistModelAnimate.loadModel("../models/SpaceSuit/SpaceSuit4.fbx"); 
 	ProtagonistModelAnimate.setShader(&shaderMulLighting); 
  
-	HunterModelAnimate.loadModel("../models/Hunter/model.fbx"); 
+	HunterModelAnimate.loadModel("../models/Hunter/model2.fbx"); 
 	HunterModelAnimate.setShader(&shaderMulLighting);
+
+	HunterModel2Animate.loadModel("../models/Hunter/model2.fbx"); 
+	HunterModel2Animate.setShader(&shaderMulLighting);
 
 	// Terreno
 	terrain.init();
@@ -810,7 +831,9 @@ void destroy() {
 	//Destroy MY NewModels 
 
 	CarlModelAnimate.destroy(); 
-	HunterModelAnimate.destroy(); 
+	HunterModelAnimate.destroy();
+	CarlModel2Animate.destroy(); 
+	HunterModel2Animate.destroy();
 	ProtagonistModelAnimate.destroy();
 
 	// Terrains objects Delete
@@ -941,14 +964,14 @@ bool processInput(bool continueApplication) {
 				animationProtagonistIndex= IndexAnimationWalk; 
 			} 
 		} 
-		if(AxisRightX!=0){ 
+		if(AxisRightX!=0 && !animationRuningShootingRunning){ 
 			modelMatrixProtagonist = glm::rotate(modelMatrixProtagonist,0.02f*AxisRightX*-1,glm::vec3(0,1,0));
 			camera->mouseMoveCamera(0.02f*AxisRightX*-1,0.0, deltaTime);
-			if(camera->pitch < 0.038 && !animationRuningShootingRunning){
+			if(camera->pitch < 0.038 ){
 				camera->mouseMoveCamera(0.0,0.3f*abs(AxisRightY)*1, deltaTime);
-			}else if(camera->pitch>0.22 && !animationRuningShootingRunning){
+			}else if(camera->pitch>0.22){
 				camera->mouseMoveCamera(0.0,0.3f*abs(AxisRightY)*-1, deltaTime);
-			}else if (!animationRuningShootingRunning){
+			}else{
 				camera->mouseMoveCamera(0.0,0.3f*(AxisRightY)*-1, deltaTime);
 			}
 			//std::cout<< camera->pitch << std::endl;
@@ -1006,6 +1029,8 @@ void prepareScene(){
 	CarlModelAnimate.setShader(&shaderMulLighting);
 	ProtagonistModelAnimate.setShader(&shaderMulLighting);
 	HunterModelAnimate.setShader(&shaderMulLighting);
+	CarlModel2Animate.setShader(&shaderMulLighting);
+	HunterModel2Animate.setShader(&shaderMulLighting);
 
 	rayModel.setShader(&shaderMulLighting);
 }
@@ -1029,6 +1054,8 @@ void prepareDepthScene(){
 	CarlModelAnimate.setShader(&shaderDepth);
 	ProtagonistModelAnimate.setShader(&shaderDepth);
 	HunterModelAnimate.setShader(&shaderDepth);
+	CarlModel2Animate.setShader(&shaderDepth);
+	HunterModel2Animate.setShader(&shaderDepth);
 
 	rayModel.setShader(&shaderDepth);
 }
@@ -1060,6 +1087,33 @@ void PointLightGeneratePlant1(glm::vec3 PositionInsidePlant){
 			generatePointLight(LampPlantPostion,LampPlantPostion2.size()+i+AditionalLights,glm::vec3(0.25,0.25,0.0),glm::vec3(0.25,0.25,0.25),glm::vec3(1.0,0.5,0.0),0.08); 
 			} 
 			AditionalLights+=LampPlantPostion.size(); 
+}
+glm::mat4  LookTowardsObject(glm::mat4 MyOrgPos, glm::mat4 Objective){
+	glm::vec3 OrgPosition=MyOrgPos[3]; // Object's current position
+    glm::vec3 TargetPosition=Objective[3]; // Target position
+	glm::vec3 direction = glm::normalize(OrgPosition-TargetPosition);
+	glm::quat rotationQuaternion = glm::rotation(glm::vec3(0.0,0.0,-1.0), direction);
+    glm::mat4 TorotationMatrix = glm::toMat4(rotationQuaternion);
+	return TorotationMatrix;
+}
+glm::mat4  MoveTowardsObject(glm::mat4 MyOrgPos, glm::mat4 Objective, float vel){
+	glm::mat4 TempPs =  glm::mat4(1.0f);
+	glm::vec3 OrgPosition=MyOrgPos[3]; // Object's current position
+    glm::vec3 TargetPosition=Objective[3]; // Target position
+	float distance =glm::distance(OrgPosition, TargetPosition); 
+	std::cout << "distancia jugador Enemy"  << distance<<std::endl;
+	if (distance > 0.5f){
+		glm::vec3 direction = glm::normalize(TargetPosition - OrgPosition);
+		//vel = vel * deltaTime;
+		TempPs = glm::translate(MyOrgPos,direction*vel);
+		for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            std::cout << TempPs[i][j] << " ";
+        }
+        std::cout << "\n";
+    }
+	}
+	return TempPs;
 }
 void renderSolidScene(){
 	/*******************************************
@@ -1137,13 +1191,30 @@ void renderSolidScene(){
 	//animationProtagonistIndex=IndexAnimationIdle;
 
 	glm::mat4 modelMatrixCarlBody = glm::mat4(modelMatrixCarl); // new variable for scaling 
-	modelMatrixCarlBody = glm::scale(modelMatrixCarlBody,glm::vec3(0.04f)); 
-	CarlModelAnimate.render(modelMatrixCarlBody); 
+	modelMatrixCarlBody = glm::scale(modelMatrixCarlBody,glm::vec3(0.04f));
+	modelMatrixCarlBody[3][1]= terrain.getHeightTerrain(modelMatrixCarlBody[3][0], modelMatrixCarlBody[3][2]); 
+	CarlModelAnimate.render(modelMatrixCarlBody);
 
-	glm::mat4 modelMatrixHunterBody = glm::mat4(modelMatrixHunter); // new variable for scaling 
-	modelMatrixHunterBody = glm::scale(modelMatrixHunterBody,glm::vec3(0.01f)); 
-	HunterModelAnimate.setAnimationIndex(1); 
+	glm::mat4 modelMatrixHunterBody = glm::mat4(modelMatrixHunter); // new variable for scaling
+	modelMatrixHunterBody *= LookTowardsObject(modelMatrixHunterBody, modelMatrixProtaBody);
+	//modelMatrixHunterBody += glm::translate(modelMatrixHunterBody, glm::vec3(0.0,0.0,-HunterMoveFordward));
+	//modelMatrixHunterBody = MoveTowardsObject(modelMatrixHunterBody,modelMatrixProtaBody,HunterMoveFordward);
+	modelMatrixHunterBody = glm::scale(modelMatrixHunterBody,glm::vec3(0.01f));
+	modelMatrixHunterBody[3][1]= terrain.getHeightTerrain(modelMatrixHunterBody[3][0], modelMatrixHunterBody[3][2]);
+	HunterModelAnimate.setAnimationIndex(HunterAnimationIndex); 
 	HunterModelAnimate.render(modelMatrixHunterBody);
+	
+
+	//Replace these ones when motion is completed
+
+	glm::mat4 modelMatrixCarlBody2 = glm::mat4(modelMatrixCarl2); // new variable for scaling 
+	modelMatrixCarlBody2 = glm::scale(modelMatrixCarlBody2,glm::vec3(0.04f)); 
+	CarlModelAnimate.render(modelMatrixCarlBody2); 
+
+	glm::mat4 modelMatrixHunterBody2 = glm::mat4(modelMatrixHunter2); // new variable for scaling 
+	modelMatrixHunterBody2 = glm::scale(modelMatrixHunterBody2,glm::vec3(0.01f)); 
+	HunterModelAnimate.setAnimationIndex(1); 
+	HunterModelAnimate.render(modelMatrixHunterBody2);
 
 	glm::mat4 modelMatrixmodelAircraftVehiculeBody = glm::mat4(modelMatrixAircraft); 
 	modelMatrixmodelAircraftVehiculeBody[3][1]= terrain.getHeightTerrain(modelMatrixmodelAircraftVehiculeBody[3][0], modelMatrixmodelAircraftVehiculeBody[3][2]) +1.8f+ currentNaveHeight; 
@@ -1273,20 +1344,17 @@ void WaitTime() {
     }
 }
 glm::vec3 CoordanatesGimpTemp = glm::vec3(0);
-void applicationLoop() {
-	bool psi = true;
 
-	glm::vec3 axis;
-	glm::vec3 target;
-	float angleTarget;
+void setPositionsFromGimpMamp(){
 
-	matrixModelRock = glm::translate(matrixModelRock, glm::vec3(-3.0, 0.0, 2.0));
+	CoordanatesGimpTemp = glm::vec3(250,0,300);
+	CoordanatesGimpTemp = TransformGIMPCoordenatesToOpenGLPixels(CoordanatesGimpTemp);
+	matrixModelRock = glm::translate(matrixModelRock, glm::vec3(CoordanatesGimpTemp));
 
 	CoordanatesGimpTemp = glm::vec3(233,0,376);
 	CoordanatesGimpTemp = TransformGIMPCoordenatesToOpenGLPixels(CoordanatesGimpTemp);
 	modelMatrixAircraft = glm::translate(modelMatrixAircraft, CoordanatesGimpTemp);
-	modelMatrixAircraft = glm::translate(modelMatrixAircraft, glm::vec3(0.0f, 3.0, 0.0)); 
-
+	modelMatrixAircraft = glm::translate(modelMatrixAircraft, glm::vec3(0.0f, 3.0, 0.0));
 
 	//New models hunter carl positions 
 	
@@ -1294,15 +1362,36 @@ void applicationLoop() {
 	CoordanatesGimpTemp = TransformGIMPCoordenatesToOpenGLPixels(CoordanatesGimpTemp);
 	modelMatrixCarl = glm::translate(modelMatrixCarl,CoordanatesGimpTemp);
 
+	CoordanatesGimpTemp = glm::vec3(195,0,277);
+	CoordanatesGimpTemp = TransformGIMPCoordenatesToOpenGLPixels(CoordanatesGimpTemp);
+	modelMatrixCarl2 = glm::translate(modelMatrixCarl2,CoordanatesGimpTemp);
+
 	CoordanatesGimpTemp = glm::vec3(226,0,334);
 	CoordanatesGimpTemp = TransformGIMPCoordenatesToOpenGLPixels(CoordanatesGimpTemp);
 	modelMatrixHunter = glm::translate(modelMatrixHunter,CoordanatesGimpTemp); 
-	modelMatrixHunter = glm::rotate(modelMatrixHunter, glm::radians(180.0f), glm::vec3(0.0,1.0,0.0)); 
+	//modelMatrixHunter = glm::rotate(modelMatrixHunter, glm::radians(180.0f), glm::vec3(0.0,1.0,0.0));
+
+	CoordanatesGimpTemp = glm::vec3(295,0,325);
+	CoordanatesGimpTemp = TransformGIMPCoordenatesToOpenGLPixels(CoordanatesGimpTemp);
+	modelMatrixHunter2 = glm::translate(modelMatrixHunter2,CoordanatesGimpTemp); 
+	//modelMatrixHunter2 = glm::rotate(modelMatrixHunter2, glm::radians(180.0f), glm::vec3(0.0,1.0,0.0));
 	
 	CoordanatesGimpTemp = glm::vec3(250,0,403);
 	CoordanatesGimpTemp = TransformGIMPCoordenatesToOpenGLPixels(CoordanatesGimpTemp);
 	modelMatrixProtagonist = glm::translate(modelMatrixProtagonist, CoordanatesGimpTemp);
 	modelMatrixProtagonist = glm::rotate(modelMatrixProtagonist, glm::radians(180.0f), glm::vec3(0.0,1.0,0.0)); 
+}
+void applicationLoop() {
+	bool psi = true;
+
+	glm::vec3 axis;
+	glm::vec3 target;
+	float angleTarget;
+
+	setPositionsFromGimpMamp();
+
+	int stateHunter =0; // 0 is to follow player,1 is to attack player while stading still, 2 is to die // do nothing diasspear
+	int stateCarl =0; // 0 is to go to first location, 1 is to go back to location
 
 	lastTime = TimeManager::Instance().GetTime();
 
@@ -1534,6 +1623,30 @@ void applicationLoop() {
 		aircraftCollider.e = modelAircraft.getObb().e * glm::vec3(1.0, 1.0, 1.0);
 		addOrUpdateColliders(collidersOBB, "aircraft", aircraftCollider, modelMatrixAircraft);
 
+		//Collider Carl
+
+		glm::mat4 modelMatrixColliderCarl = glm::mat4(modelMatrixCarl);
+		AbstractModel::OBB CarlCollider;
+		// Set the orientation of collider before doing the scale
+		CarlCollider.u = glm::quat_cast(modelMatrixCarl);
+		modelMatrixColliderCarl = glm::scale(modelMatrixColliderCarl,glm::vec3(1.0,6.0,1.0f));
+		modelMatrixColliderCarl = glm::translate(modelMatrixColliderCarl,CarlModelAnimate.getObb().c);
+		CarlCollider.c = glm::vec3(modelMatrixColliderCarl[3] + glm::vec4(0,1.8,0,0.0));
+		CarlCollider.e = CarlModelAnimate.getObb().e * glm::vec3(1.0,6.0,1.0f);
+		addOrUpdateColliders(collidersOBB, "carl1", CarlCollider, modelMatrixCarl);
+
+		//Collider Hunter
+
+		glm::mat4 modelMatrixColliderHunter = glm::mat4(modelMatrixHunter);
+		AbstractModel::OBB HunterCollider;
+		// Set the orientation of collider before doing the scale
+		HunterCollider.u = glm::quat_cast(modelMatrixHunter);
+		modelMatrixColliderHunter = glm::scale(modelMatrixColliderHunter,glm::vec3(0.3,2.0,0.3));
+		modelMatrixColliderHunter = glm::translate(modelMatrixColliderHunter, HunterModelAnimate.getObb().c);
+		HunterCollider.c = glm::vec3(modelMatrixColliderHunter[3] + glm::vec4(0,1.5,-0.5,0.0));
+		HunterCollider.e = HunterModelAnimate.getObb().e * glm::vec3(0.3,2.0,0.3);
+		addOrUpdateColliders(collidersOBB, "Hunter1", HunterCollider, modelMatrixHunter);
+
 		//Collider del la rock
 		AbstractModel::SBB rockCollider;
 		glm::mat4 modelMatrixColliderRock= glm::mat4(matrixModelRock);
@@ -1732,28 +1845,6 @@ void applicationLoop() {
 					<< std::endl;
 			}
 		}
-
-		// Esto es para ilustrar la transformacion inversa de los coliders
-		/*glm::vec3 cinv = glm::inverse(ProtgonistCollider.u) * glm::vec4(rockCollider.c, 1.0);
-		glm::mat4 invColliderS = glm::mat4(1.0);
-		invColliderS = glm::translate(invColliderS, cinv);
-		invColliderS =  invColliderS * glm::mat4(ProtgonistCollider.u);
-		invColliderS = glm::scale(invColliderS, glm::vec3(rockCollider.ratio * 2.0, rockCollider.ratio * 2.0, rockCollider.ratio * 2.0));
-		sphereCollider.setColor(glm::vec4(1.0, 1.0, 0.0, 1.0));
-		sphereCollider.enableWireMode();
-		sphereCollider.render(invColliderS);
-		glm::vec3 cinv2 = glm::inverse(ProtgonistCollider.u) * glm::vec4(ProtgonistCollider.c, 1.0);
-		glm::mat4 invColliderB = glm::mat4(1.0);
-		invColliderB = glm::translate(invColliderB, cinv2);
-		invColliderB = glm::scale(invColliderB, ProtgonistCollider.e * 2.0f);
-		boxCollider.setColor(glm::vec4(1.0, 1.0, 0.0, 1.0));
-		boxCollider.enableWireMode();
-		boxCollider.render(invColliderB);
-		// Se regresa el color blanco
-		sphereCollider.setColor(glm::vec4(1.0, 1.0, 1.0, 1.0));
-		boxCollider.setColor(glm::vec4(1.0, 1.0, 1.0, 1.0));*/
-		
-		// Para salvar los keyframes
 		
 		/**********Maquinas de estado*************/
 		
@@ -1825,7 +1916,8 @@ void applicationLoop() {
 					GoUpNave=false; 
 				} 
 			}
-
+		//Hunter
+		HunterMoveFordward++;
 	}
 }
 
