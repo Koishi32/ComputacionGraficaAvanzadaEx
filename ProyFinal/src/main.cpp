@@ -164,14 +164,14 @@ std::vector<glm::vec3> LampPlantPostion2 ={ //one light
 std::vector<float> LampPlant2Orientation={ 
 	-90 , 90
 }; 
-int AditionalLights=0; 
 
+int AditionalLights=0; 
+const glm::vec3 LocalizacionProtaGun = glm::vec3(0.0,1.80,1.20);
 // Blending model unsorted
 std::map<std::string, glm::vec3> blendingUnsorted = { // transparentes ordern depues de solidos, se tiene que ordenar desde el mas lejano al mas cercano
-		{"aircraft", glm::vec3(10.0, 0.0, -17.5)}, // Set coordinates from Gimp
-		{"LazerSource",glm::vec3(0.0)} //Actualizar con modelo de pivote
+		{"aircraft", glm::vec3(0.0)},  
+		{"LazerSource",glm::vec3(0.0)}  // Actualizar segundo elemento a la hora de renderizar
 };
-
 double deltaTime;
 double currTime, lastTime;
 float velProtagonist=3.5f;
@@ -199,7 +199,7 @@ float currentNaveHeight=0.0f,NaveStep=0.02f;
 const float LimitNaveHeight=4.0f; 
 bool GoUpNave = true;
 
-double animationDuration =0.6f; // Duration in seconds shooting animation
+double animationDuration =1.0f; // Duration in seconds shooting animation
 double animationStartTime = 0.0f;
 bool animationRuningShootingRunning = false;
 
@@ -240,7 +240,7 @@ GLuint depthMap, depthMapFBO;
 //Definicion de variables para el sistema de particulas de Rayo
 GLuint initVel,startTime;
 GLuint VAOParticles;
-GLuint nParticles = 200;
+GLuint nParticles = 125;
 double currTimeParticlesAnimation, lastTimeParticlesAnimation;
 
 // Se definen todos las funciones.
@@ -256,7 +256,7 @@ void destroy();
 bool processInput(bool continueApplication = true);
 void prepareScene();
 void prepareDepthScene();
-void renderScene();
+void renderScene(bool render);
 void WaitTime();
 void PointLightGeneratePlant1(glm::vec3 PositionInsidePlant); 
 void  generatePointLight(glm::vec3 LampPlantPostion2,int i,glm::vec3 DiffuseColor,glm::vec3 ambient,glm::vec3 specular,float quadratic);
@@ -290,7 +290,7 @@ void initParticleBuffers(){
 		theta = glm::mix(0.0f,glm::pi<float>() / 6.0f, ((float) rand() / RAND_MAX)); //aleatorios para la funcin esferica
 		phi = glm::mix(0.0f,glm::two_pi<float>() , ((float) rand() / RAND_MAX));
 		v.x = sinf(theta) * cosf(phi);
-		v.y = cosf(theta/2.0f); // Cambiar para que se mueva poco en y
+		v.y = cosf(theta*2); // Cambiar para que se mueva poco en y
 		v.z = sinf(theta) * sinf(phi); //direcciones aeatorias
 
 		velocity=glm::mix(0.6f,0.8f,((float) rand() / RAND_MAX)); //magnitud aleatoria
@@ -397,7 +397,7 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	// Inicializacion de los objetos.
 	skyboxSphere.init();
 	skyboxSphere.setShader(&shaderSkybox);
-	skyboxSphere.setScale(glm::vec3(20.0f, 20.0f, 20.0f));
+	skyboxSphere.setScale(glm::vec3(10.0f, 10.0f, 10.0f));
 
 	boxCollider.init();
 	boxCollider.setShader(&shader);
@@ -409,7 +409,7 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 
 	rayModel.init();
 	rayModel.setShader(&shader);
-	rayModel.setColor(glm::vec4(1.0));
+	rayModel.setColor(glm::vec4(1.0,0.0,0.0,1.0));
 
 	boxCesped.init();
 	boxCesped.setShader(&shaderMulLighting);
@@ -679,7 +679,7 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	textureScreen.freeImage(); // Liberamos memoria
 
 	// Definiendo la textura
-	Texture textureParticlesLazer("../Textures/bluewater.png");
+	Texture textureParticlesLazer("../Textures/MyTextures/LaserRay.png");
 	textureParticlesLazer.loadImage(); // Cargar la textura
 	glGenTextures(1, &textureParticlesLazerID); // Creando el id de la textura del landingpad
 	glBindTexture(GL_TEXTURE_2D, textureParticlesLazerID); // Se enlaza la textura
@@ -894,14 +894,23 @@ bool processInput(bool continueApplication) {
 	if (exitApp || glfwWindowShouldClose(window) != 0) {
 		return false;
 	}
+	bool presionarEmpezarPartida;
+	bool presionarContinuar;
+	if(glfwGetGamepadState(GLFW_JOYSTICK_1, &state)){
+		presionarEmpezarPartida = (state.buttons[GLFW_GAMEPAD_BUTTON_Y] == GLFW_PRESS);
+		presionarContinuar = (state.buttons[GLFW_GAMEPAD_BUTTON_A] == GLFW_PRESS);
+	}else{
+		presionarEmpezarPartida = glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS;
+		presionarContinuar = glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS;
+	}
 
 	if(!iniciaPartida){
-		bool presionarEnter = glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS;
-		if(textureActivaID == textureInit1ID && presionarEnter){
+		
+		if(textureActivaID == textureInit1ID && presionarEmpezarPartida){
 			iniciaPartida = true;
 			textureActivaID = textureScreenID;
 		}
-		else if(!presionarOpcion && glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS){
+		else if(!presionarOpcion && presionarContinuar){
 			presionarOpcion = true;
 			if(textureActivaID == textureInit1ID)
 				textureActivaID = textureInit2ID;
@@ -935,19 +944,20 @@ bool processInput(bool continueApplication) {
 		if(AxisRightX!=0){ 
 			modelMatrixProtagonist = glm::rotate(modelMatrixProtagonist,0.02f*AxisRightX*-1,glm::vec3(0,1,0));
 			camera->mouseMoveCamera(0.02f*AxisRightX*-1,0.0, deltaTime);
-			if(camera->pitch < 0.038 ){
+			if(camera->pitch < 0.038 && !animationRuningShootingRunning){
 				camera->mouseMoveCamera(0.0,0.3f*abs(AxisRightY)*1, deltaTime);
-			}else if(camera->pitch>0.28){
+			}else if(camera->pitch>0.22 && !animationRuningShootingRunning){
 				camera->mouseMoveCamera(0.0,0.3f*abs(AxisRightY)*-1, deltaTime);
-			}else{
+			}else if (!animationRuningShootingRunning){
 				camera->mouseMoveCamera(0.0,0.3f*(AxisRightY)*-1, deltaTime);
 			}
 			//std::cout<< camera->pitch << std::endl;
 		} 
 		//Boton de ataque 
-		if((state.buttons[GLFW_GAMEPAD_BUTTON_X] == GLFW_PRESS) && !animationRuningShootingRunning){ 
+		if((state.buttons[GLFW_GAMEPAD_BUTTON_Y] == GLFW_PRESS) && !animationRuningShootingRunning){ 
 			animationProtagonistIndex=IndexAnimationShoot;
 			animationRuningShootingRunning=true;
+			lastTimeParticlesAnimation = currTimeParticlesAnimation; // reset animation shot
 		}
 		if( !((AxisLeftUpDonw>0.5 || AxisLeftUpDonw<-0.5) || (AxisLeftX>0.5 || AxisLeftX<-0.5))  && !animationRuningShootingRunning && !isJump){
 			animationProtagonistIndex=IndexAnimationIdle; 
@@ -996,6 +1006,8 @@ void prepareScene(){
 	CarlModelAnimate.setShader(&shaderMulLighting);
 	ProtagonistModelAnimate.setShader(&shaderMulLighting);
 	HunterModelAnimate.setShader(&shaderMulLighting);
+
+	rayModel.setShader(&shaderMulLighting);
 }
 
 void prepareDepthScene(){
@@ -1017,6 +1029,8 @@ void prepareDepthScene(){
 	CarlModelAnimate.setShader(&shaderDepth);
 	ProtagonistModelAnimate.setShader(&shaderDepth);
 	HunterModelAnimate.setShader(&shaderDepth);
+
+	rayModel.setShader(&shaderDepth);
 }
 void generatePointLight(glm::vec3 LampPlantPostion2,int i,glm::vec3 DiffuseColor,glm::vec3 ambient,glm::vec3 specular,float quadratic){
 
@@ -1080,9 +1094,6 @@ void renderSolidScene(){
 	matrixModelRock[3][1] = terrain.getHeightTerrain(matrixModelRock[3][0], matrixModelRock[3][2]);
 	modelRock.render(matrixModelRock);
 
-	//PISTOL
-	//glm::mat4 ModelMatrixBodyPistol =  glm::mat4(modelMatrixProtagonist);
-	//modelPistol.render(ModelMatrixBodyPistol);
 
 	// Forze to enable the unit texture to 0 always ----------------- IMPORTANT
 	glActiveTexture(GL_TEXTURE0);
@@ -1135,7 +1146,7 @@ void renderSolidScene(){
 	HunterModelAnimate.render(modelMatrixHunterBody);
 
 	glm::mat4 modelMatrixmodelAircraftVehiculeBody = glm::mat4(modelMatrixAircraft); 
-	modelMatrixmodelAircraftVehiculeBody[3][1]= terrain.getHeightTerrain(modelMatrixmodelAircraftVehiculeBody[3][0], modelMatrixmodelAircraftVehiculeBody[3][2]) +3.0+ currentNaveHeight; 
+	modelMatrixmodelAircraftVehiculeBody[3][1]= terrain.getHeightTerrain(modelMatrixmodelAircraftVehiculeBody[3][0], modelMatrixmodelAircraftVehiculeBody[3][2]) +1.8f+ currentNaveHeight; 
 	modelMatrixmodelAircraftVehiculeBody = glm::rotate(modelMatrixmodelAircraftVehiculeBody, rotNave, glm::vec3(0, 1, 0)); 
 	modelAircraftVehicule.render(modelMatrixmodelAircraftVehiculeBody);
 
@@ -1156,14 +1167,14 @@ void renderSolidScene(){
 	glDepthFunc(oldDepthFuncMode);
 }
 
-void renderAlphaScene(bool render = true){
+void renderAlphaScene(bool render){
 	/**********
 	 * Update the position with alpha objects
 	 */
 	// Update the aircraft
 	blendingUnsorted.find("aircraft")->second = glm::vec3(modelMatrixAircraft[3]);
 	//Update Lazer qith player possition
-	blendingUnsorted.find("LazerSource")-> second= glm::vec3(modelMatrixAircraft[3]);
+	blendingUnsorted.find("LazerSource")-> second= glm::vec3(modelMatrixProtagonist[3]);
 
 	/**********
 	 * Sorter with alpha objects
@@ -1185,29 +1196,30 @@ void renderAlphaScene(bool render = true){
 		if(it->second.first.compare("aircraft") == 0){
 			// Render for the aircraft model
 			glm::mat4 modelMatrixAircraftBlend = glm::mat4(modelMatrixAircraft);
-			modelMatrixAircraftBlend[3][1] = terrain.getHeightTerrain(modelMatrixAircraftBlend[3][0], modelMatrixAircraftBlend[3][2]) + 3.0+currentNaveHeight;
+			modelMatrixAircraftBlend[3][1] = terrain.getHeightTerrain(modelMatrixAircraftBlend[3][0], modelMatrixAircraftBlend[3][2]) + 1.8f+currentNaveHeight;
 			modelAircraft.render(modelMatrixAircraftBlend);
 		}
 		else if (render && it->second.first.compare("LazerSource")==0){
 			//Se renderiza el sistema de particulas
-			glm::mat4 modelMatrixParticlesLazer = glm::mat4(modelMatrixAircraft);
-			modelMatrixParticlesLazer = glm::translate(modelMatrixParticlesLazer,it->second.second);
-			modelMatrixParticlesLazer[3][1] = terrain.getHeightTerrain(modelMatrixParticlesLazer[3][0],modelMatrixParticlesLazer[3][2]) + 1.0;
+			glm::mat4 modelMatrixParticlesLazer = glm::mat4(modelMatrixProtagonist);
+			modelMatrixParticlesLazer = glm::translate(modelMatrixParticlesLazer,LocalizacionProtaGun);
+			//modelMatrixParticlesLazer =  glm::translate(modelMatrixParticlesLazer,LocalizacionProtaGun);
+			//modelMatrixParticlesLazer[3][1] = terrain.getHeightTerrain(modelMatrixParticlesLazer[3][0],modelMatrixParticlesLazer[3][2]) + 1.0;
 			modelMatrixParticlesLazer = glm::scale(modelMatrixParticlesLazer,glm::vec3(1.0f));
 			currTimeParticlesAnimation = TimeManager::Instance().GetTime();
-			if(currTimeParticlesAnimation - lastTimeParticlesAnimation > 0.5f){ //tiempo actual menos ultima medicion mayor a 10, termino animacion
+			if((currTimeParticlesAnimation - lastTimeParticlesAnimation >1.5f ) && animationRuningShootingRunning){ //tiempo actual menos ultima medicion mayor a 10, termino animacion
 				lastTimeParticlesAnimation = currTimeParticlesAnimation; // Reiniciar animacion
 			}
 			glDepthMask(GL_FALSE);
 			// Particle size
-			glPointSize (5.0f);
+			glPointSize (20.0f);
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, textureParticlesLazerID);
 			textureParticlesLazer.turnOn();
 			textureParticlesLazer.setFloat("Time",float (currTimeParticlesAnimation - lastTimeParticlesAnimation)); // segundo desde que inicio la animacion
-			textureParticlesLazer.setFloat("ParticleLifetime",0.5f);
+			textureParticlesLazer.setFloat("ParticleLifetime",1.5f);
 			textureParticlesLazer.setInt("ParticleTex",0);
-			textureParticlesLazer.setVectorFloat3("Gravity",glm::value_ptr(glm::vec3(0.0f,-0.1f,0.0f)));
+			textureParticlesLazer.setVectorFloat3("Gravity",glm::value_ptr(glm::vec3(0.0f,0.0f,2.0f)));
 			textureParticlesLazer.setMatrix4("model",1,false,glm::value_ptr(modelMatrixParticlesLazer));
 			glBindVertexArray(VAOParticles);
 			glDrawArrays(GL_POINTS,0,nParticles);
@@ -1531,6 +1543,9 @@ void applicationLoop() {
 		rockCollider.ratio = modelRock.getSbb().ratio * 1.0;
 		addOrUpdateColliders(collidersSBB, "rock", rockCollider, matrixModelRock);
 
+		//Colliders for hunters
+		//Colliders for carls
+
 		// Lamps1 colliders
 		for (int i = 0; i < LampPlantPostion.size(); i++){
 			AbstractModel::OBB lampCollider;
@@ -1572,12 +1587,12 @@ void applicationLoop() {
 				glm::radians(-90.0f), glm::vec3(1, 0, 0));
 		// Set the orientation of collider before doing the scale
 		ProtgonistCollider.u = glm::quat_cast(modelmatrixColliderProtagonist);
-		modelmatrixColliderProtagonist = glm::scale(modelmatrixColliderProtagonist,glm::vec3(1.0));
+		modelmatrixColliderProtagonist = glm::scale(modelmatrixColliderProtagonist,glm::vec3(1.0, 1.0,1.0));
 		modelmatrixColliderProtagonist = glm::translate(modelmatrixColliderProtagonist,
 				glm::vec3(ProtagonistModelAnimate.getObb().c.x,
 						ProtagonistModelAnimate.getObb().c.y,
 						ProtagonistModelAnimate.getObb().c.z));
-		ProtgonistCollider.e = ProtagonistModelAnimate.getObb().e * glm::vec3(1.0) * glm::vec3(1.0);
+		ProtgonistCollider.e = ProtagonistModelAnimate.getObb().e * glm::vec3(1.0, 1.0, 1.0) *glm::vec3(1.0);
 		ProtgonistCollider.c = glm::vec3(modelmatrixColliderProtagonist[3]);
 		addOrUpdateColliders(collidersOBB, "Protagonist", ProtgonistCollider, modelMatrixProtagonist);
 
@@ -1606,7 +1621,7 @@ void applicationLoop() {
 		}
 
 		/**********Render de transparencias***************/
-		renderAlphaScene();
+		renderAlphaScene(true);
 
 		/*********************Prueba de colisiones****************************/
 		for (std::map<std::string,
@@ -1685,19 +1700,19 @@ void applicationLoop() {
 			}
 		}
 
-		glm::mat4 modelMatrixRayMay = glm::mat4(modelMatrixProtagonist);
-		modelMatrixRayMay = glm::translate(modelMatrixRayMay, glm::vec3(0, 1, 0));
+		glm::mat4 modelMatrixRayProta = glm::mat4(modelMatrixProtagonist);
+		modelMatrixRayProta = glm::translate(modelMatrixRayProta, glm::vec3(0, 1, 0));
 		float maxDistanceRay = 10.0;
-		glm::vec3 rayDirection = modelMatrixRayMay[2];
-		glm::vec3 ori = modelMatrixRayMay[3];
+		glm::vec3 rayDirection = modelMatrixRayProta[2];
+		glm::vec3 ori = modelMatrixRayProta[3];
 		glm::vec3 rmd = ori + rayDirection * (maxDistanceRay / 2.0f);
 		glm::vec3 targetRay = ori + rayDirection * maxDistanceRay;
-		modelMatrixRayMay[3] = glm::vec4(rmd, 1.0);
-		modelMatrixRayMay = glm::rotate(modelMatrixRayMay, glm::radians(180.0f), 
-			glm::vec3(0, 1, 0));
-		modelMatrixRayMay = glm::scale(modelMatrixRayMay, 
-			glm::vec3(1.0, maxDistanceRay,1.0));
-		rayModel.render(modelMatrixRayMay);
+		modelMatrixRayProta[3] = glm::vec4(rmd, 1.0);
+		modelMatrixRayProta = glm::rotate(modelMatrixRayProta, glm::radians(90.0f), 
+			glm::vec3(1, 0, 0));
+		modelMatrixRayProta = glm::scale(modelMatrixRayProta, 
+			glm::vec3(10.0f, maxDistanceRay,10.0f));
+		rayModel.render(modelMatrixRayProta);
 
 		std::map<std::string, std::tuple<AbstractModel::SBB, glm::mat4, glm::mat4>>::
 			iterator itSBB;
@@ -1709,14 +1724,14 @@ void applicationLoop() {
 				<< std::endl;
 			}
 		}
-		/*std::map<std::string, std::tuple<AbstractModel::OBB, glm::mat4, glm::mat4>>::
+		std::map<std::string, std::tuple<AbstractModel::OBB, glm::mat4, glm::mat4>>::
 			iterator itOBB;
 		for (itOBB = collidersOBB.begin(); itOBB != collidersOBB.end(); itOBB++) {
 			if (testRayOBB(ori, targetRay, std::get<0>(itOBB->second))) {
 				std::cout << "Collision del rayo con el modelo " << itOBB->first
 					<< std::endl;
 			}
-		}*/
+		}
 
 		// Esto es para ilustrar la transformacion inversa de los coliders
 		/*glm::vec3 cinv = glm::inverse(ProtgonistCollider.u) * glm::vec4(rockCollider.c, 1.0);
