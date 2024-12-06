@@ -216,6 +216,13 @@ double animationDuration =1.0f; // Duration in seconds shooting animation
 double animationStartTime = 0.0f;
 bool animationRuningShootingRunning = false;
 
+//Variables sistema de vida Jugador
+
+static int VidasJugador=3;
+bool playerHasbeenAttacked = false;
+double PlayerInmunityDuration =1.5f; // Duration in seconds shooting animation
+double PlayerInmunityStarTime = 0.0f;
+
 // Colliders
 std::map<std::string, std::tuple<AbstractModel::OBB, glm::mat4, glm::mat4> > collidersOBB;
 std::map<std::string, std::tuple<AbstractModel::SBB, glm::mat4, glm::mat4> > collidersSBB;
@@ -253,7 +260,7 @@ GLuint depthMap, depthMapFBO;
 //Definicion de variables para el sistema de particulas de Rayo
 GLuint initVel,startTime;
 GLuint VAOParticles;
-GLuint nParticles = 125;
+GLuint nParticles = 200;
 double currTimeParticlesAnimation, lastTimeParticlesAnimation;
 
 //!!!!!!!!!!
@@ -957,7 +964,7 @@ bool processInput(bool continueApplication) {
 		float AxisLeftX = state.axes[GLFW_GAMEPAD_AXIS_LEFT_X]; 
 		float AxisRightX= state.axes[GLFW_GAMEPAD_AXIS_RIGHT_X];
 		float AxisRightY= state.axes[GLFW_GAMEPAD_AXIS_RIGHT_Y];
-		if( ((AxisLeftUpDonw>0.5 || AxisLeftUpDonw<-0.5) || (AxisLeftX>0.5 || AxisLeftX<-0.5)) && !animationRuningShootingRunning ){ 
+		if( ((AxisLeftUpDonw>0.5 || AxisLeftUpDonw<-0.5) || (AxisLeftX>0.5 || AxisLeftX<-0.5)) && !animationRuningShootingRunning && !playerHasbeenAttacked ){ 
 			modelMatrixProtagonist = glm::translate(modelMatrixProtagonist, glm::vec3(0.02*AxisLeftX*-1 *velProtagonist, 0.0, 0.02*AxisLeftUpDonw*-1*velProtagonist)); 
 			if(AxisLeftX<-0.5){ 
 				animationProtagonistIndex= IndexAnimationMoveLeft; 
@@ -969,7 +976,7 @@ bool processInput(bool continueApplication) {
 				animationProtagonistIndex= IndexAnimationWalk; 
 			} 
 		} 
-		if(AxisRightX!=0 && !animationRuningShootingRunning){ 
+		if(AxisRightX!=0 && !animationRuningShootingRunning && !playerHasbeenAttacked){ 
 			modelMatrixProtagonist = glm::rotate(modelMatrixProtagonist,0.02f*AxisRightX*-1,glm::vec3(0,1,0));
 			camera->mouseMoveCamera(0.02f*AxisRightX*-1,0.0, deltaTime);
 			if(camera->pitch < 0.038 ){
@@ -982,12 +989,12 @@ bool processInput(bool continueApplication) {
 			//std::cout<< camera->pitch << std::endl;
 		} 
 		//Boton de ataque 
-		if((state.buttons[GLFW_GAMEPAD_BUTTON_Y] == GLFW_PRESS) && !animationRuningShootingRunning){ 
+		if((state.buttons[GLFW_GAMEPAD_BUTTON_Y] == GLFW_PRESS) && !animationRuningShootingRunning && !playerHasbeenAttacked){ 
 			animationProtagonistIndex=IndexAnimationShoot;
 			animationRuningShootingRunning=true;
 			lastTimeParticlesAnimation = currTimeParticlesAnimation; // reset animation shot
 		}
-		if( !((AxisLeftUpDonw>0.5 || AxisLeftUpDonw<-0.5) || (AxisLeftX>0.5 || AxisLeftX<-0.5))  && !animationRuningShootingRunning && !isJump){
+		if( !((AxisLeftUpDonw>0.5 || AxisLeftUpDonw<-0.5) || (AxisLeftX>0.5 || AxisLeftX<-0.5))  && !animationRuningShootingRunning && !isJump && !playerHasbeenAttacked){
 			animationProtagonistIndex=IndexAnimationIdle; 
 		}
 
@@ -1100,25 +1107,8 @@ void LookTowardsObject(glm::mat4 MyOrgPos, glm::mat4 Objective){
 	glm::quat rotationQuaternion = glm::rotation(glm::vec3(0.0,0.0,-1.0), direction);
     glm::mat4 TorotationMatrix = glm::toMat4(rotationQuaternion);
 }
-glm::mat4 TempPs =  glm::mat4(1.0f);
-void MoveTowardsObject(glm::mat4 MyOrgPos, glm::mat4 Objective){
-	TempPs =  glm::mat4(1.0f);
-	glm::vec3 OrgPosition=MyOrgPos[3]; // Object's current position
-    glm::vec3 TargetPosition=Objective[3]; // Target position
-	float distance =glm::distance(OrgPosition, TargetPosition); 
-	std::cout << "distancia jugador Enemy"  << distance<<std::endl;
-	if (distance > 0.5f){
-		glm::vec3 direction = glm::normalize(TargetPosition - OrgPosition);
-		//vel = vel * deltaTime;
-		TempPs = glm::translate(MyOrgPos,direction*hunterVel);
-		for (int i = 0; i < 4; ++i) {
-        for (int j = 0; j < 4; ++j) {
-            std::cout << TempPs[i][j] << " ";
-        }
-        std::cout << "\n";
-    }
-	}
-	//return TempPs;
+void RenderTextVidas(){
+	modelText->render("VidasJugador : "+ std::to_string(VidasJugador) + " ", -0.25f,-1,0,1,0,35);
 }
 void renderSolidScene(){
 	/*******************************************
@@ -1208,8 +1198,17 @@ void renderSolidScene(){
 	glm::vec3 hunterPosition = glm::vec3(modelMatrixHunter[3]);     // Hunter's position
 
 	// Step 1: Calculate direction to the player
-	glm::vec3 directionToPlayer = glm::normalize(playerPosition - hunterPosition);
-
+	glm::vec3 directionToPlayer = glm::normalize(glm::vec3(playerPosition.x - hunterPosition.x, 
+                                                       0.0f, 
+                                                       playerPosition.z - hunterPosition.z));
+ 	//step 1.5 calculate distance to stop player from coming to close
+	float distance  = glm::distance(playerPosition,hunterPosition);
+	if(distance > 1.10f){
+		HunterAnimationIndex= 0; // Animation for walking
+		hunterVel=0.01;
+	} else {
+		HunterAnimationIndex= 1; // Animation for atack
+	}
 	// Step 2: Calculate rotation quaternion to face the player
 	glm::quat rotationQuaternion = glm::rotation(glm::vec3(0.0f, 0.0f, -1.0f), directionToPlayer);
 	glm::mat4 rotationMatrix = glm::toMat4(rotationQuaternion);
@@ -1224,15 +1223,10 @@ void renderSolidScene(){
 	glm::vec3 forwardMovement = glm::vec3(0.0f, 0.0f, -moveSpeed); // Local forward direction
 	modelMatrixHunter = glm::translate(modelMatrixHunter, forwardMovement);
 
-	modelMatrixHunter[3][1]= terrain.getHeightTerrain(modelMatrixHunter[3][0], modelMatrixHunter[3][2]); 
-
 	// Render the hunter
+	modelMatrixHunter[3][1]= terrain.getHeightTerrain(modelMatrixHunter[3][0], modelMatrixHunter[3][2]); 
 	HunterModelAnimate.setAnimationIndex(HunterAnimationIndex); 
 	HunterModelAnimate.render(modelMatrixHunter);
-
-	
-
-	//Replace these ones when motion is completed
 
 	glm::mat4 modelMatrixCarlBody2 = glm::mat4(modelMatrixCarl2); // new variable for scaling 
 	//modelMatrixCarlBody2 = glm::scale(modelMatrixCarlBody2,glm::vec3(0.04f)); 
@@ -1338,8 +1332,8 @@ void renderAlphaScene(bool render){
 		glEnable(GL_BLEND);
 		boxIntro.render();
 		glDisable(GL_BLEND);
-
-		modelText->render("Texto en OpenGL", -1,0,0,1,0,35);
+		RenderTextVidas();
+		
 	}
 }
 
@@ -1349,7 +1343,9 @@ void renderScene(){
 }
 float currentTime=0;
 float elapsedTime=0;
-void WaitTime() {
+float currentTime2=0;
+float elapsedTime2=0;
+void WaitTime() { // For variables that requiere time passage
     if (animationRuningShootingRunning) {
         currentTime = deltaTime;
         elapsedTime = currentTime + elapsedTime;
@@ -1357,16 +1353,31 @@ void WaitTime() {
         if (elapsedTime >= animationDuration) {
 			animationProtagonistIndex = IndexAnimationIdle;
 			if (elapsedTime >= animationDuration + 0.4f){
-				std::cout << "Actual reset!" << std::endl;
 				animationRuningShootingRunning = false;
 				currentTime=0;
 				elapsedTime=0;
 			}
-            std::cout << "Animation shoot ended!" << std::endl;
         } else {
             float progress = elapsedTime / animationDuration;
-            // Update your animation state based on progress
-            std::cout << "Animation progress: " << progress * 100.0f << "%" << std::endl;
+        }
+    }
+	if (playerHasbeenAttacked) {
+		RenderTextVidas();
+        currentTime2 = deltaTime;
+        elapsedTime2 = currentTime2 + elapsedTime2;
+		ProtagonistModelAnimate.setColor(glm::vec4(0.65,0.0,0.0,1.0));
+        if (elapsedTime2 >= PlayerInmunityDuration) {
+			std::cout << "HURT!" << std::endl;
+			ProtagonistModelAnimate.setColor(glm::vec4(1.0,1.0,1.0,1.0));
+			animationProtagonistIndex= IndexAnimationIdle;
+			if (elapsedTime2 >= PlayerInmunityDuration + 0.2f){
+				std::cout << "NORMAL!" << std::endl;
+				playerHasbeenAttacked = false;
+				currentTime2=0;
+				elapsedTime2=0;
+			}
+        } else {
+
         }
     }
 }
@@ -1666,11 +1677,11 @@ void applicationLoop() {
 		addOrUpdateColliders(collidersOBB, "carl1", CarlCollider, modelMatrixCarlBody);
 
 		//Collider Hunter
-		/*
-		glm::mat4 modelMatrixColliderHunter = glm::mat4(modelMatrixHunterBody);
+		
+		glm::mat4 modelMatrixColliderHunter = glm::mat4(modelMatrixHunter);
 		AbstractModel::OBB HunterCollider;
 		// Set the orientation of collider before doing the scale
-		HunterCollider.u = glm::quat_cast(modelMatrixHunterBody);
+		HunterCollider.u = glm::quat_cast(modelMatrixHunter);
 		modelMatrixColliderHunter = glm::scale(modelMatrixColliderHunter,glm::vec3(0.3,2.0,0.3));
 		modelMatrixColliderHunter = glm::translate(modelMatrixColliderHunter,
 			glm::vec3(HunterModelAnimate.getObb().c.x,
@@ -1678,7 +1689,7 @@ void applicationLoop() {
 				HunterModelAnimate.getObb().c.z));
 		HunterCollider.c = glm::vec3(modelMatrixColliderHunter[3] + glm::vec4(0,1.5,-0.5,0.0));
 		HunterCollider.e = HunterModelAnimate.getObb().e * glm::vec3(0.3,2.0,0.3);
-		addOrUpdateColliders(collidersOBB, "Hunter1", HunterCollider, modelMatrixHunterBody);*/
+		addOrUpdateColliders(collidersOBB, "Hunter1", HunterCollider, modelMatrixHunter);
 
 		//Collider del la rock
 		AbstractModel::SBB rockCollider;
@@ -1840,8 +1851,16 @@ void applicationLoop() {
 				else {
 					if (itCollision->first.compare("Protagonist") == 0)
 						modelMatrixProtagonist = std::get<1>(obbBuscado->second);
-					if (itCollision->first.compare("Enemy") == 0){} //use to meke them stop
-						//modelMatrixDart = std::get<1>(obbBuscado->second);
+					if (itCollision->first.compare("Hunter1") == 0){
+						std::cout <<"Caso Hunter"<<std::endl;
+						if(!playerHasbeenAttacked){
+							VidasJugador--;
+							playerHasbeenAttacked=true;
+							hunterVel=0;
+							animationProtagonistIndex= IndexAnimationRecibeHit;
+						}
+					}
+
 				}
 			}
 		}
