@@ -2,7 +2,6 @@
 #include <cmath>
 //glew include
 #include <GL/glew.h>
-
 //std includes
 #include <string>
 #include <iostream>
@@ -58,6 +57,21 @@
 #include <AL/alut.h>
 
 #define ARRAY_SIZE_IN_ELEMENTS(a) (sizeof(a)/sizeof(a[0]))
+
+// settings
+const unsigned int SCR_WIDTH = 800;
+const unsigned int SCR_HEIGHT = 600;
+
+/// Holds all state information relevant to a character as loaded using FreeType
+struct Character {
+    unsigned int TextureID; // ID handle of the glyph texture
+    glm::ivec2   Size;      // Size of glyph
+    glm::ivec2   Bearing;   // Offset from baseline to left/top of glyph
+    unsigned int Advance;   // Horizontal offset to advance to next glyph
+};
+
+std::map<GLchar, Character> Characters;
+unsigned int VAO, VBO;
 
 int screenWidth;
 int screenHeight;
@@ -124,7 +138,8 @@ bool iniciaPartida = false, presionarOpcion = false;
 
 // Modelo para el render del texto
 FontTypeRendering::FontTypeRendering *modelText;
-
+FontTypeRendering::FontTypeRendering *modelTextInit;
+FontTypeRendering::FontTypeRendering *modelTextPrologo;
 GLenum types[6] = {
 GL_TEXTURE_CUBE_MAP_POSITIVE_X,
 GL_TEXTURE_CUBE_MAP_NEGATIVE_X,
@@ -133,12 +148,12 @@ GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
 GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
 GL_TEXTURE_CUBE_MAP_NEGATIVE_Z };
 
-std::string fileNames[6] = { "../Textures/mp_bloodvalley/blood-valley_ft.tga",
-		"../Textures/mp_bloodvalley/blood-valley_bk.tga",
-		"../Textures/mp_bloodvalley/blood-valley_up.tga",
-		"../Textures/mp_bloodvalley/blood-valley_dn.tga",
-		"../Textures/mp_bloodvalley/blood-valley_rt.tga",
-		"../Textures/mp_bloodvalley/blood-valley_lf.tga" };
+std::string fileNames[6] = { "../Textures/MyTextures/front.png", // New sky Box
+		"../Textures/MyTextures/back.png",
+		"../Textures/MyTextures/top.png",
+		"../Textures/MyTextures/bottom.png",
+		"../Textures/MyTextures/right.png",
+		"../Textures/MyTextures/left.png" };
 
 bool exitApp = false;
 int lastMousePosX, offsetX = 0;
@@ -180,14 +195,15 @@ std::map<std::string, glm::vec3> blendingUnsorted = { // transparentes ordern de
 };
 double deltaTime;
 double currTime, lastTime;
-const int IndexAnimationIdle = 3;
-const int IndexAnimationRecibeHit= 2;
+const int IndexAnimationIdle = 4;
+const int IndexFinalDeath =1 ;
+const int IndexAnimationRecibeHit= 3;
 const int IndexAnimationDeath= 0;  
-const int IndexAnimationWalk = 4; 
-const int IndexAnimationShoot = 1; 
-const int IndexAnimationRunBack=5; 
-const int IndexAnimationMoveRight = 7; 
-const int IndexAnimationMoveLeft = 6; 
+const int IndexAnimationWalk = 5; 
+const int IndexAnimationShoot = 2; 
+const int IndexAnimationRunBack=6; 
+const int IndexAnimationMoveRight = 8; 
+const int IndexAnimationMoveLeft = 7; 
 int animationProtagonistIndex=3; 
 // Variables Joystick 
 int presentJoystick; 
@@ -220,8 +236,10 @@ bool animationRuningShootingRunning = false;
 
 static int VidasJugador=3;
 bool playerHasbeenAttacked = false;
-double PlayerInmunityDuration =1.5f; // Duration in seconds shooting animation
+bool inmobile=false;
+double PlayerInmunityDuration =1.0f; // Duration in seconds shooting animation
 double PlayerInmunityStarTime = 0.0f;
+bool IsAlive=true;
 
 // Colliders
 std::map<std::string, std::tuple<AbstractModel::OBB, glm::mat4, glm::mat4> > collidersOBB;
@@ -252,7 +270,7 @@ ALenum format;
 ALvoid *data;
 int ch;
 ALboolean loop;
-std::vector<bool> sourcesPlay = {true, true, true};
+std::vector<bool> sourcesPlay = {true, false};
 
 // Framesbuffers
 GLuint depthMap, depthMapFBO;
@@ -485,13 +503,13 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	CarlModel2Animate.loadModel("../models/carlRobot/model2.fbx"); 
 	CarlModel2Animate.setShader(&shaderMulLighting); 
 
-	ProtagonistModelAnimate.loadModel("../models/SpaceSuit/SpaceSuit4.fbx"); 
+	ProtagonistModelAnimate.loadModel("../models/SpaceSuit/SpaceSuit.fbx"); 
 	ProtagonistModelAnimate.setShader(&shaderMulLighting); 
  
 	HunterModelAnimate.loadModel("../models/Hunter/modelF.fbx"); 
 	HunterModelAnimate.setShader(&shaderMulLighting);
 
-	HunterModel2Animate.loadModel("../models/Hunter/model2.fbx"); 
+	HunterModel2Animate.loadModel("../models/Hunter/modelF.fbx"); 
 	HunterModel2Animate.setShader(&shaderMulLighting);
 
 	// Terreno
@@ -501,7 +519,10 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	// Se inicializa el model de render text
 	modelText = new FontTypeRendering::FontTypeRendering(screenWidth, screenHeight);
 	modelText->Initialize();
-
+	modelTextInit = new FontTypeRendering::FontTypeRendering(screenWidth, screenHeight);
+	modelTextInit->Initialize();
+	modelTextPrologo =  new FontTypeRendering::FontTypeRendering(screenWidth, screenHeight);
+	modelTextPrologo->Initialize();
 	camera->setPosition(glm::vec3(0.0,7.0,-4.0));
 	camera->setDistanceFromTarget(distanceFromTarget);
 	camera->setSensitivity(1.0);
@@ -655,7 +676,7 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	textureBlendMap.freeImage();
 
 	// Definiendo la textura
-	Texture textureIntro1("../Textures/Intro1.png");
+	Texture textureIntro1("../Textures/MyTextures/Title1Screen.jpg");
 	textureIntro1.loadImage(); // Cargar la textura
 	glGenTextures(1, &textureInit1ID); // Creando el id de la textura del landingpad
 	glBindTexture(GL_TEXTURE_2D, textureInit1ID); // Se enlaza la textura
@@ -674,7 +695,7 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	textureIntro1.freeImage(); // Liberamos memoria
 
 	// Definiendo la textura
-	Texture textureIntro2("../Textures/Intro2.png");
+	Texture textureIntro2("../Textures/MyTextures/Title2Screen.jpg");
 	textureIntro2.loadImage(); // Cargar la textura
 	glGenTextures(1, &textureInit2ID); // Creando el id de la textura del landingpad
 	glBindTexture(GL_TEXTURE_2D, textureInit2ID); // Se enlaza la textura
@@ -693,7 +714,7 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	textureIntro2.freeImage(); // Liberamos memoria
 
 	// Definiendo la textura
-	Texture textureScreen("../Textures/Screen.png");
+	Texture textureScreen("../Textures/MyTextures/ScreenLives.png");
 	textureScreen.loadImage(); // Cargar la textura
 	glGenTextures(1, &textureScreenID); // Creando el id de la textura del landingpad
 	glBindTexture(GL_TEXTURE_2D, textureScreenID); // Se enlaza la textura
@@ -747,8 +768,8 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	}
 	// Generate buffers, or else no sound will happen!
 	alGenBuffers(NUM_BUFFERS, buffer);
-	buffer[0] = alutCreateBufferFromFile("../sounds/fountain.wav");
-	buffer[1] = alutCreateBufferFromFile("../sounds/fire.wav");
+	buffer[0] = alutCreateBufferFromFile("../sounds/MySounds/FlyingSoucer.wav");
+	buffer[1] = alutCreateBufferFromFile("../sounds/MySounds/sci-fi-weapon-shoot.wav"); //blaster change
 	int errorAlut = alutGetError();
 	if (errorAlut != ALUT_ERROR_NO_ERROR){
 		printf("- Error open files with alut %d !!\n", errorAlut);
@@ -766,20 +787,20 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 		printf("init - no errors after alGenSources\n");
 	}
 	alSourcef(source[0], AL_PITCH, 1.0f);
-	alSourcef(source[0], AL_GAIN, 3.0f);
+	alSourcef(source[0], AL_GAIN, 2.0f);
 	alSourcefv(source[0], AL_POSITION, source0Pos);
 	alSourcefv(source[0], AL_VELOCITY, source0Vel);
 	alSourcei(source[0], AL_BUFFER, buffer[0]);
 	alSourcei(source[0], AL_LOOPING, AL_TRUE);
-	alSourcef(source[0], AL_MAX_DISTANCE, 2000);
+	alSourcef(source[0], AL_MAX_DISTANCE,0.25f);
 
 	alSourcef(source[1], AL_PITCH, 1.0f);
 	alSourcef(source[1], AL_GAIN, 0.5f);
 	alSourcefv(source[1], AL_POSITION, source1Pos);
 	alSourcefv(source[1], AL_VELOCITY, source1Vel);
 	alSourcei(source[1], AL_BUFFER, buffer[1]);
-	alSourcei(source[1], AL_LOOPING, AL_TRUE);
-	alSourcef(source[1], AL_MAX_DISTANCE, 1000);
+	alSourcei(source[1], AL_LOOPING, AL_FALSE);
+	alSourcef(source[1], AL_MAX_DISTANCE, 0.1f);
 
 	/*******************************************
 	 * Inicializacion del framebuffer para
@@ -931,12 +952,14 @@ bool processInput(bool continueApplication) {
 	}
 	bool presionarEmpezarPartida;
 	bool presionarContinuar;
+	bool CerraTodo_Salir=false;
 	if(glfwGetGamepadState(GLFW_JOYSTICK_1, &state)){
+		CerraTodo_Salir =(state.buttons[GLFW_GAMEPAD_BUTTON_X] == GLFW_PRESS);
 		presionarEmpezarPartida = (state.buttons[GLFW_GAMEPAD_BUTTON_Y] == GLFW_PRESS);
-		presionarContinuar = (state.buttons[GLFW_GAMEPAD_BUTTON_A] == GLFW_PRESS);
-	}else{
-		presionarEmpezarPartida = glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS;
-		presionarContinuar = glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS;
+		presionarContinuar = (state.buttons[GLFW_GAMEPAD_BUTTON_B] == GLFW_PRESS);
+	}
+	if(CerraTodo_Salir){
+		exitApp=true;
 	}
 
 	if(!iniciaPartida){
@@ -952,63 +975,73 @@ bool processInput(bool continueApplication) {
 			else if(textureActivaID == textureInit2ID)
 				textureActivaID = textureInit1ID;
 		}
-		else if(glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_RELEASE)
+		else if(state.buttons[GLFW_GAMEPAD_BUTTON_A] == GLFW_RELEASE)
 			presionarOpcion = false;
 	}
 	//GAME PAD PROTAGONIST CONTROL
-	if (glfwGetGamepadState(GLFW_JOYSTICK_1, &state)) {
-		int axesCount, buttonCount;
-		const float * axes = glfwGetJoystickAxes(GLFW_JOYSTICK_1, &axesCount);
-		//Movimiento axis XZ 
-		float AxisLeftUpDonw = state.axes[GLFW_GAMEPAD_AXIS_LEFT_Y]; 
-		float AxisLeftX = state.axes[GLFW_GAMEPAD_AXIS_LEFT_X]; 
-		float AxisRightX= state.axes[GLFW_GAMEPAD_AXIS_RIGHT_X];
-		float AxisRightY= state.axes[GLFW_GAMEPAD_AXIS_RIGHT_Y];
-		if( ((AxisLeftUpDonw>0.5 || AxisLeftUpDonw<-0.5) || (AxisLeftX>0.5 || AxisLeftX<-0.5)) && !animationRuningShootingRunning && !playerHasbeenAttacked ){ 
-			modelMatrixProtagonist = glm::translate(modelMatrixProtagonist, glm::vec3(0.02*AxisLeftX*-1 *velProtagonist, 0.0, 0.02*AxisLeftUpDonw*-1*velProtagonist)); 
-			if(AxisLeftX<-0.5){ 
-				animationProtagonistIndex= IndexAnimationMoveLeft; 
-			}else if(AxisLeftX>0.5){ 
-				animationProtagonistIndex=IndexAnimationMoveRight ; 
-			}else if (AxisLeftUpDonw>0.5 ){ 
-				animationProtagonistIndex=IndexAnimationRunBack; 
-			}else if (AxisLeftUpDonw <-0.5){ 
-				animationProtagonistIndex= IndexAnimationWalk; 
-			} 
-		} 
-		if(AxisRightX!=0 && !animationRuningShootingRunning && !playerHasbeenAttacked){ 
-			modelMatrixProtagonist = glm::rotate(modelMatrixProtagonist,0.02f*AxisRightX*-1,glm::vec3(0,1,0));
-			camera->mouseMoveCamera(0.02f*AxisRightX*-1,0.0, deltaTime);
-			if(camera->pitch < 0.038 ){
-				camera->mouseMoveCamera(0.0,0.3f*abs(AxisRightY)*1, deltaTime);
-			}else if(camera->pitch>0.22){
-				camera->mouseMoveCamera(0.0,0.3f*abs(AxisRightY)*-1, deltaTime);
-			}else{
-				camera->mouseMoveCamera(0.0,0.3f*(AxisRightY)*-1, deltaTime);
+	if (IsAlive && iniciaPartida){
+			if(VidasJugador < 1){
+				IsAlive=false;
 			}
-			//std::cout<< camera->pitch << std::endl;
-		} 
-		//Boton de ataque 
-		if((state.buttons[GLFW_GAMEPAD_BUTTON_Y] == GLFW_PRESS) && !animationRuningShootingRunning && !playerHasbeenAttacked){ 
-			animationProtagonistIndex=IndexAnimationShoot;
-			animationRuningShootingRunning=true;
-			lastTimeParticlesAnimation = currTimeParticlesAnimation; // reset animation shot
-		}
-		if( !((AxisLeftUpDonw>0.5 || AxisLeftUpDonw<-0.5) || (AxisLeftX>0.5 || AxisLeftX<-0.5))  && !animationRuningShootingRunning && !isJump && !playerHasbeenAttacked){
-			animationProtagonistIndex=IndexAnimationIdle; 
-		}
+			if (glfwGetGamepadState(GLFW_JOYSTICK_1, &state)) {
+			int axesCount, buttonCount;
+			const float * axes = glfwGetJoystickAxes(GLFW_JOYSTICK_1, &axesCount);
+			//Movimiento axis XZ 
+			float AxisLeftUpDonw = state.axes[GLFW_GAMEPAD_AXIS_LEFT_Y]; 
+			float AxisLeftX = state.axes[GLFW_GAMEPAD_AXIS_LEFT_X]; 
+			float AxisRightX= state.axes[GLFW_GAMEPAD_AXIS_RIGHT_X];
+			float AxisRightY= state.axes[GLFW_GAMEPAD_AXIS_RIGHT_Y];
+			if( ((AxisLeftUpDonw>0.5 || AxisLeftUpDonw<-0.5) || (AxisLeftX>0.5 || AxisLeftX<-0.5)) && !animationRuningShootingRunning && !inmobile ){ 
+				modelMatrixProtagonist = glm::translate(modelMatrixProtagonist, glm::vec3(0.02*AxisLeftX*-1 *velProtagonist, 0.0, 0.02*AxisLeftUpDonw*-1*velProtagonist)); 
+				if(AxisLeftX<-0.5){ 
+					animationProtagonistIndex= IndexAnimationMoveLeft; 
+				}else if(AxisLeftX>0.5){ 
+					animationProtagonistIndex=IndexAnimationMoveRight ; 
+				}else if (AxisLeftUpDonw>0.5 ){ 
+					animationProtagonistIndex=IndexAnimationRunBack; 
+				}else if (AxisLeftUpDonw <-0.5){ 
+					animationProtagonistIndex= IndexAnimationWalk; 
+				} 
+			} 
+			if(AxisRightX!=0 && !animationRuningShootingRunning && !inmobile){ 
+				modelMatrixProtagonist = glm::rotate(modelMatrixProtagonist,0.02f*AxisRightX*-1,glm::vec3(0,1,0));
+				camera->mouseMoveCamera(0.02f*AxisRightX*-1,0.0, deltaTime);
+				if(camera->pitch < 0.038 ){
+					camera->mouseMoveCamera(0.0,0.3f*abs(AxisRightY)*1, deltaTime);
+				}else if(camera->pitch>0.22){
+					camera->mouseMoveCamera(0.0,0.3f*abs(AxisRightY)*-1, deltaTime);
+				}else{
+					camera->mouseMoveCamera(0.0,0.3f*(AxisRightY)*-1, deltaTime);
+				}
+				//std::cout<< camera->pitch << std::endl;
+			} 
+			//Boton de ataque 
+			if((state.buttons[GLFW_GAMEPAD_BUTTON_Y] == GLFW_PRESS) && !animationRuningShootingRunning && !inmobile){ 
+				animationProtagonistIndex=IndexAnimationShoot;
+				animationRuningShootingRunning=true;
+				sourcesPlay[1] = false;
+				alSourcePlay(source[1]);
+				lastTimeParticlesAnimation = currTimeParticlesAnimation; // reset animation shot
+			}
+			if( !((AxisLeftUpDonw>0.5 || AxisLeftUpDonw<-0.5) || (AxisLeftX>0.5 || AxisLeftX<-0.5))  && !animationRuningShootingRunning && !isJump && !inmobile){
+				animationProtagonistIndex=IndexAnimationIdle; 
+			}
 
-		const unsigned char * buttons = glfwGetJoystickButtons(GLFW_JOYSTICK_1, &buttonCount);
-		//std::cout << "Número de botones disponibles :=>" << buttonCount << std::endl;
-		if(buttons[1] == GLFW_PRESS)
-		//	std::cout << "Se presiona A" << std::endl;
+			const unsigned char * buttons = glfwGetJoystickButtons(GLFW_JOYSTICK_1, &buttonCount);
+			//std::cout << "Número de botones disponibles :=>" << buttonCount << std::endl;
+			if(buttons[1] == GLFW_PRESS)
+			//	std::cout << "Se presiona A" << std::endl;
 
-		if(!isJump && buttons[1] == GLFW_PRESS && !animationRuningShootingRunning){
-			isJump = true;
-			startTimeJump = currTime;
-			tmv = 0;
+			if(!isJump && buttons[1] == GLFW_PRESS && !animationRuningShootingRunning && !inmobile){
+				isJump = true;
+				startTimeJump = currTime;
+				tmv = 0;
+			}
 		}
+	}else{
+		//animationProtagonistIndex = IndexAnimationDeath;
 	}
+	
 
 	if(glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
 		camera->mouseMoveCamera(offsetX, 0.0, deltaTime);
@@ -1108,7 +1141,11 @@ void LookTowardsObject(glm::mat4 MyOrgPos, glm::mat4 Objective){
     glm::mat4 TorotationMatrix = glm::toMat4(rotationQuaternion);
 }
 void RenderTextVidas(){
-	modelText->render("VidasJugador : "+ std::to_string(VidasJugador) + " ", -0.25f,-1,0,1,0,35);
+	if(IsAlive){
+		modelText->render(""+ std::to_string(VidasJugador) + " ", 0.85f,0.60f,0,1,0,50);
+	}else{
+		modelText->render("Game Over " "Press X to exit" ,-0.6f,0.0f,0,1,0,40);
+	}
 }
 void renderSolidScene(){
 	/*******************************************
@@ -1365,14 +1402,24 @@ void WaitTime() { // For variables that requiere time passage
 		RenderTextVidas();
         currentTime2 = deltaTime;
         elapsedTime2 = currentTime2 + elapsedTime2;
-		ProtagonistModelAnimate.setColor(glm::vec4(0.65,0.0,0.0,1.0));
+		if(!IsAlive){
+			animationProtagonistIndex=IndexAnimationDeath;
+		}
+		//ProtagonistModelAnimate.setColor(glm::vec4(0.65,0.0,0.0,1.0));
         if (elapsedTime2 >= PlayerInmunityDuration) {
-			std::cout << "HURT!" << std::endl;
-			ProtagonistModelAnimate.setColor(glm::vec4(1.0,1.0,1.0,1.0));
-			animationProtagonistIndex= IndexAnimationIdle;
-			if (elapsedTime2 >= PlayerInmunityDuration + 0.2f){
+			//
+			//ProtagonistModelAnimate.setColor(glm::vec4(1.0,1.0,1.0,1.0));
+			if(IsAlive){
+				animationProtagonistIndex= IndexAnimationIdle;
+				inmobile=false;
+			}else{
+				animationProtagonistIndex=IndexFinalDeath;
+			}
+			
+			if (elapsedTime2 >= PlayerInmunityDuration + 1.5f){
 				std::cout << "NORMAL!" << std::endl;
 				playerHasbeenAttacked = false;
+				
 				currentTime2=0;
 				elapsedTime2=0;
 			}
@@ -1431,7 +1478,7 @@ void applicationLoop() {
 
 	lastTime = TimeManager::Instance().GetTime();
 
-	textureActivaID = textureInit1ID;
+	textureActivaID = textureInit1ID; //pONER PANTALLA INICIO
 
 	glm::vec3 lightPos = glm::vec3(10.0, 10.0, -10.0);
 
@@ -1596,6 +1643,15 @@ void applicationLoop() {
 			boxIntro.render();
 			glfwSwapBuffers(window);
 			continue;
+			if(textureActivaID = textureInit2ID){
+				modelTextInit->render("Mision: ",-.7f,.7f,1,0,0,50);
+				modelTextPrologo -> render("Has sido enviado a marte para acabar con una rebelion Robot",-.7f,.7f,0,0,0,25);
+			}else{
+				modelTextInit->render("Mars Rebelion" ,-.7f,.7f,1,0,0,50);
+				modelTextPrologo -> render("Presiona Y para jugar \n X para salir /n A para prologo" ,-.7f,.7f,0,0,0,25);
+				
+			}
+			
 		}
 
 		/*******************************************
@@ -1852,10 +1908,13 @@ void applicationLoop() {
 					if (itCollision->first.compare("Protagonist") == 0)
 						modelMatrixProtagonist = std::get<1>(obbBuscado->second);
 					if (itCollision->first.compare("Hunter1") == 0){
+						modelMatrixColliderHunter = std::get<1>(obbBuscado->second);
 						std::cout <<"Caso Hunter"<<std::endl;
 						if(!playerHasbeenAttacked){
+							std::cout << "HURT!" << std::endl;
 							VidasJugador--;
 							playerHasbeenAttacked=true;
+							inmobile=true;
 							hunterVel=0;
 							animationProtagonistIndex= IndexAnimationRecibeHit;
 						}
@@ -1905,14 +1964,14 @@ void applicationLoop() {
 		/****************************+
 		 * Open AL sound data
 		 */
-		source0Pos[0] = modelMatrixColliderRock[3].x;
-		source0Pos[1] = modelMatrixColliderRock[3].y;
-		source0Pos[2] = modelMatrixColliderRock[3].z;
+		source0Pos[0] = modelMatrixAircraft[3].x;
+		source0Pos[1] = modelMatrixAircraft[3].y;
+		source0Pos[2] = modelMatrixAircraft[3].z;
 		alSourcefv(source[0], AL_POSITION, source0Pos);
 
-		source1Pos[0] = modelMatrixAircraft[3].x;
-		source1Pos[1] = modelMatrixAircraft[3].y;
-		source1Pos[2] = modelMatrixAircraft[3].z;
+		source1Pos[0] = modelMatrixProtagonist[3].x;
+		source1Pos[1] = modelMatrixProtagonist[3].y;
+		source1Pos[2] = modelMatrixProtagonist[3].z;
 		alSourcefv(source[1], AL_POSITION, source1Pos);
 
 		// Listener for the Thris person camera
@@ -1944,7 +2003,7 @@ void applicationLoop() {
 		// listenerOri[5] = camera->getUp().z;
 		alListenerfv(AL_ORIENTATION, listenerOri);
 
-		for(unsigned int i = 0; i < sourcesPlay.size(); i++){
+		for(unsigned int i = 0; i < sourcesPlay.size(); i++){ // Play all sounds one, if loop activated they'll keep going
 			if(sourcesPlay[i]){
 				sourcesPlay[i] = false;
 				alSourcePlay(source[i]);
@@ -1970,6 +2029,7 @@ void applicationLoop() {
 		HunterMoveFordward++;
 	}
 }
+
 
 int main(int argc, char **argv) {
 	//Conversin de coordenadas GIMP a open GL

@@ -72,8 +72,8 @@ void FontTypeRendering::Initialize() {
 		return exit(-1);
 	}
 	// Se le indica a dicha cara el archivo ttf que se utilizar�.
-	if (FT_New_Face(ft_lib, "../Fonts/arial.ttf", 0, &face) != 0) {
-		std::cerr << "Unable to load arial.ttf\n";
+	if (FT_New_Face(ft_lib, "../Fonts/MyFonts/QuirkyRobot.ttf", 0, &face) != 0) {
+		std::cerr << "Unable to load Robot Font.ttf\n";
 		cleanup();
 		return exit(-1);
 	}
