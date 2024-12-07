@@ -170,6 +170,7 @@ static glm::mat4 modelMatrixHunter = glm::mat4(1.0f);
 glm::mat4 modelMatrixCarl2 = glm::mat4(1.0f); 
 static glm::mat4 modelMatrixHunter2 = glm::mat4(1.0f);
 glm::mat4 modelMatrixProtagonist = glm::mat4(1.0f);
+glm::mat4 modelMatrixmodelAircraftVehiculeBody = glm::mat4(1.0f);
 
 //Lamps Plant  Positions contro how many and where 
 std::vector<glm::vec3> LampPlantPostion ={ // multiple lights 
@@ -807,12 +808,12 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 		printf("init - no errors after alGenSources\n");
 	}
 	alSourcef(source[0], AL_PITCH, 1.0f);
-	alSourcef(source[0], AL_GAIN, 2.0f);
+	alSourcef(source[0], AL_GAIN, 3.0f);
 	alSourcefv(source[0], AL_POSITION, source0Pos);
 	alSourcefv(source[0], AL_VELOCITY, source0Vel);
 	alSourcei(source[0], AL_BUFFER, buffer[0]);
 	alSourcei(source[0], AL_LOOPING, AL_TRUE);
-	alSourcef(source[0], AL_MAX_DISTANCE,0.25f);
+	alSourcef(source[0], AL_MAX_DISTANCE,500);
 
 	alSourcef(source[1], AL_PITCH, 1.0f);
 	alSourcef(source[1], AL_GAIN, 0.5f);
@@ -820,7 +821,7 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	alSourcefv(source[1], AL_VELOCITY, source1Vel);
 	alSourcei(source[1], AL_BUFFER, buffer[1]);
 	alSourcei(source[1], AL_LOOPING, AL_FALSE);
-	alSourcef(source[1], AL_MAX_DISTANCE, 0.1f);
+	alSourcef(source[1], AL_MAX_DISTANCE, 500);
 
 	/*******************************************
 	 * Inicializacion del framebuffer para
@@ -1143,7 +1144,7 @@ void generatePointLight(glm::vec3 LampPlantPostion2,int i,glm::vec3 DiffuseColor
 } 
 void PointLightGeneratePlant1(glm::vec3 PositionInsidePlant){ 
 	for(int i = 0; i < LampPlantPostion.size();i++){ // Recordar transformacion de abajo haca arribase aplican 
-			glm::mat4 matrixAdjustLampPlant = glm::mat4(1.0); 
+			glm::mat4 matrixAdjustLampPlant = glm::mat4(1.0);  // Pos dentro del modelo
 			matrixAdjustLampPlant = glm::translate(matrixAdjustLampPlant,LampPlantPostion[i]); 
 			matrixAdjustLampPlant = glm::rotate(matrixAdjustLampPlant,glm::radians(LampPlantOrientation[i]),glm::vec3(0,1,0)); 
 			matrixAdjustLampPlant = glm::scale(matrixAdjustLampPlant, glm::vec3(1.25)); 
@@ -1369,7 +1370,7 @@ void renderSolidScene(){
 	}
 
 
-	glm::mat4 modelMatrixmodelAircraftVehiculeBody = glm::mat4(modelMatrixAircraft); 
+	modelMatrixmodelAircraftVehiculeBody = glm::mat4(modelMatrixAircraft); 
 	modelMatrixmodelAircraftVehiculeBody[3][1]= terrain.getHeightTerrain(modelMatrixmodelAircraftVehiculeBody[3][0], modelMatrixmodelAircraftVehiculeBody[3][2]) +1.8f+ currentNaveHeight; 
 	modelMatrixmodelAircraftVehiculeBody = glm::rotate(modelMatrixmodelAircraftVehiculeBody, rotNave, glm::vec3(0, 1, 0)); 
 	modelAircraftVehicule.render(modelMatrixmodelAircraftVehiculeBody);
@@ -1443,7 +1444,7 @@ void renderAlphaScene(bool render){
 			textureParticlesLazer.setFloat("Time",float (currTimeParticlesAnimation - lastTimeParticlesAnimation)); // segundo desde que inicio la animacion
 			textureParticlesLazer.setFloat("ParticleLifetime",1.5f);
 			textureParticlesLazer.setInt("ParticleTex",0);
-			textureParticlesLazer.setVectorFloat3("Gravity",glm::value_ptr(glm::vec3(0.0f,0.0f,2.0f)));
+			textureParticlesLazer.setVectorFloat3("Gravity",glm::value_ptr(glm::vec3(0.0f,-0.25f,2.0f)));
 			textureParticlesLazer.setMatrix4("model",1,false,glm::value_ptr(modelMatrixParticlesLazer));
 			glBindVertexArray(VAOParticles);
 			glDrawArrays(GL_POINTS,0,nParticles);
@@ -1725,7 +1726,7 @@ void applicationLoop() {
 		PointLightGeneratePlant1(glm::vec3(-0.132,1.906,-0.163)); 
 		PointLightGeneratePlant1(glm::vec3(-0.584,1.236,-0.147)); 
 		PointLightGeneratePlant1(glm::vec3(0.704,1.325,-0.227)); 
-		glm::vec3 spotPosition2 = glm::vec3{modelMatrixAircraft*glm::vec4(0.0,0.5f,0.0,1.0)};  // Localization light on ship
+		glm::vec3 spotPosition2 = glm::vec3{modelMatrixmodelAircraftVehiculeBody*glm::vec4(0.0,0.5f,0.0,1.0)};  // Localization light on ship
 		generatePointLight(spotPosition2,LampPlantPostion2.size() +LampPlantPostion.size()*3,glm::vec3(0.0,1.0,0.0),glm::vec3(1.0,1.0,0.0),glm::vec3(0.4,1.0,0.4),2.0); 
 		
 		/************Render de imagen de frente**************/
@@ -2117,9 +2118,9 @@ void applicationLoop() {
 		/****************************+
 		 * Open AL sound data
 		 */
-		source0Pos[0] = modelMatrixAircraft[3].x;
-		source0Pos[1] = modelMatrixAircraft[3].y;
-		source0Pos[2] = modelMatrixAircraft[3].z;
+		source0Pos[0] = modelMatrixAircraftVehicule[3].x;
+		source0Pos[1] = modelMatrixAircraftVehicule[3].y;
+		source0Pos[2] = modelMatrixAircraftVehicule[3].z;
 		alSourcefv(source[0], AL_POSITION, source0Pos);
 
 		source1Pos[0] = modelMatrixProtagonist[3].x;
