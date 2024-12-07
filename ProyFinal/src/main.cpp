@@ -139,7 +139,9 @@ bool iniciaPartida = false, presionarOpcion = false;
 // Modelo para el render del texto
 FontTypeRendering::FontTypeRendering *modelText;
 FontTypeRendering::FontTypeRendering *modelTextInit;
+FontTypeRendering::FontTypeRendering *modelTextInit2;
 FontTypeRendering::FontTypeRendering *modelTextPrologo;
+FontTypeRendering::FontTypeRendering *modelTextPrologo2;
 GLenum types[6] = {
 GL_TEXTURE_CUBE_MAP_POSITIVE_X,
 GL_TEXTURE_CUBE_MAP_NEGATIVE_X,
@@ -157,8 +159,8 @@ std::string fileNames[6] = { "../Textures/MyTextures/front.png", // New sky Box
 
 bool exitApp = false;
 int lastMousePosX, offsetX = 0;
-int lastMousePosY, offsetY = 0;
-
+static int TOTALSCORE=0;
+const int NEEDEDSCORE=4;
 // Model matrix definitions
 glm::mat4 matrixModelRock = glm::mat4(1.0);
 glm::mat4 modelMatrixAircraft = glm::mat4(1.0);
@@ -166,7 +168,7 @@ glm::mat4 modelMatrixAircraftVehicule = glm::mat4(1.0f);
 glm::mat4 modelMatrixCarl = glm::mat4(1.0f); 
 static glm::mat4 modelMatrixHunter = glm::mat4(1.0f);
 glm::mat4 modelMatrixCarl2 = glm::mat4(1.0f); 
-glm::mat4 modelMatrixHunter2 = glm::mat4(1.0f);
+static glm::mat4 modelMatrixHunter2 = glm::mat4(1.0f);
 glm::mat4 modelMatrixProtagonist = glm::mat4(1.0f);
 
 //Lamps Plant  Positions contro how many and where 
@@ -220,6 +222,11 @@ float angleDegreesToProtagonist=0;
  float HunterMoveFordward = 1.0f;
  float hunterVel = 0.01f;
 int HunterAnimationIndex=0;
+
+ float HunterMoveFordward2 = 1.0f;
+ float hunterVel2 = 0.01f;
+int HunterAnimationIndex2=0;
+
  float CarlMoveFordwar = 1.5f;
  float CarlVel = 0.02f;
 
@@ -240,6 +247,13 @@ bool inmobile=false;
 double PlayerInmunityDuration =1.0f; // Duration in seconds shooting animation
 double PlayerInmunityStarTime = 0.0f;
 bool IsAlive=true;
+
+int lastMousePosY, offsetY = 0;
+
+bool IsEnemy1Death=false; // Hunter 1
+bool IsEnemy2Death=false; // Hunter 2
+bool IsEnemy3Death=false; // Hunter 3
+bool IsEnemy4Death=false; // Hunter 4
 
 // Colliders
 std::map<std::string, std::tuple<AbstractModel::OBB, glm::mat4, glm::mat4> > collidersOBB;
@@ -285,6 +299,8 @@ double currTimeParticlesAnimation, lastTimeParticlesAnimation;
 glm::mat4 modelMatrixAircraftBlend;
 glm::mat4 modelMatrixCarlBody;
 glm::mat4 modelMatrixHunterBody;
+glm::mat4 modelMatrixCarlBody2;
+glm::mat4 modelMatrixHunterBody2;
 
 // Se definen todos las funciones.
 void reshapeCallback(GLFWwindow *Window, int widthRes, int heightRes);
@@ -497,19 +513,19 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 
 
 	//New models carl, hunter and  protagonist
-	CarlModelAnimate.loadModel("../models/carlRobot/model2.fbx"); 
+	CarlModelAnimate.loadModel("../models/carlRobot/model.fbx"); 
 	CarlModelAnimate.setShader(&shaderMulLighting);
 
-	CarlModel2Animate.loadModel("../models/carlRobot/model2.fbx"); 
+	CarlModel2Animate.loadModel("../models/carlRobot/model.fbx"); 
 	CarlModel2Animate.setShader(&shaderMulLighting); 
 
 	ProtagonistModelAnimate.loadModel("../models/SpaceSuit/SpaceSuit.fbx"); 
 	ProtagonistModelAnimate.setShader(&shaderMulLighting); 
  
-	HunterModelAnimate.loadModel("../models/Hunter/modelF.fbx"); 
+	HunterModelAnimate.loadModel("../models/Hunter/model.fbx"); 
 	HunterModelAnimate.setShader(&shaderMulLighting);
 
-	HunterModel2Animate.loadModel("../models/Hunter/modelF.fbx"); 
+	HunterModel2Animate.loadModel("../models/Hunter/model.fbx"); 
 	HunterModel2Animate.setShader(&shaderMulLighting);
 
 	// Terreno
@@ -521,8 +537,12 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	modelText->Initialize();
 	modelTextInit = new FontTypeRendering::FontTypeRendering(screenWidth, screenHeight);
 	modelTextInit->Initialize();
+	modelTextPrologo2 = new FontTypeRendering::FontTypeRendering(screenWidth, screenHeight);
+	modelTextPrologo2->Initialize();
 	modelTextPrologo =  new FontTypeRendering::FontTypeRendering(screenWidth, screenHeight);
 	modelTextPrologo->Initialize();
+	modelTextInit2 = new FontTypeRendering::FontTypeRendering(screenWidth, screenHeight);
+	modelTextInit2->Initialize();
 	camera->setPosition(glm::vec3(0.0,7.0,-4.0));
 	camera->setDistanceFromTarget(distanceFromTarget);
 	camera->setSensitivity(1.0);
@@ -956,7 +976,7 @@ bool processInput(bool continueApplication) {
 	if(glfwGetGamepadState(GLFW_JOYSTICK_1, &state)){
 		CerraTodo_Salir =(state.buttons[GLFW_GAMEPAD_BUTTON_X] == GLFW_PRESS);
 		presionarEmpezarPartida = (state.buttons[GLFW_GAMEPAD_BUTTON_Y] == GLFW_PRESS);
-		presionarContinuar = (state.buttons[GLFW_GAMEPAD_BUTTON_B] == GLFW_PRESS);
+		presionarContinuar = (state.buttons[GLFW_GAMEPAD_BUTTON_A] == GLFW_PRESS);
 	}
 	if(CerraTodo_Salir){
 		exitApp=true;
@@ -1142,9 +1162,12 @@ void LookTowardsObject(glm::mat4 MyOrgPos, glm::mat4 Objective){
 }
 void RenderTextVidas(){
 	if(IsAlive){
-		modelText->render(""+ std::to_string(VidasJugador) + " ", 0.85f,0.60f,0,1,0,50);
+		modelText->render(""+ std::to_string(VidasJugador) + " ", 0.85f,0.70f,0,1,0,60);
+		if(TOTALSCORE >= NEEDEDSCORE){
+			modelText->render("VICTORIA!! " "Press X to exit" ,-0.5f,0.0f,0,1,0,40);
+		}
 	}else{
-		modelText->render("Game Over " "Press X to exit" ,-0.6f,0.0f,0,1,0,40);
+		modelText->render("Game Over " "Press X to exit" ,-0.5f,0.0f,0,1,0,40);
 	}
 }
 void renderSolidScene(){
@@ -1222,57 +1245,129 @@ void renderSolidScene(){
 	ProtagonistModelAnimate.render(modelMatrixProtaBody);
 	//animationProtagonistIndex=IndexAnimationIdle;
 
-	modelMatrixCarl[3][1]= terrain.getHeightTerrain(modelMatrixCarl[3][0], modelMatrixCarl[3][2]); 
-	modelMatrixCarlBody = glm::mat4(modelMatrixCarl); // new variable for scaling 
-	//modelMatrixCarlBody = glm::scale(modelMatrixCarlBody,glm::vec3(0.04f));
-	CarlModelAnimate.render(modelMatrixCarlBody);
+	if(!IsEnemy1Death){
+			// Get positions of the player and hunter
+		glm::vec3 playerPosition = glm::vec3(modelMatrixProtaBody[3]);  // Player's position
+		glm::vec3 hunterPosition = glm::vec3(modelMatrixHunter[3]);     // Hunter's position
 
-	// Persistent model matrix for the hunter
+		// Step 1: Calculate direction to the player
+		glm::vec3 directionToPlayer = glm::normalize(glm::vec3(playerPosition.x - hunterPosition.x, 
+														0.0f, 
+														playerPosition.z - hunterPosition.z));
+		//step 1.5 calculate distance to stop player from coming to close
+		float distance  = glm::distance(playerPosition,hunterPosition);
+		if(distance > 1.10f){
+			HunterAnimationIndex= 0; // Animation for walking
+			hunterVel=0.01;
+		} else {
+			HunterAnimationIndex= 1;
+			hunterVel=0;
+			if(!playerHasbeenAttacked){
+				playerHasbeenAttacked=true;
+				inmobile=true;
+				animationProtagonistIndex= IndexAnimationRecibeHit;
+				VidasJugador--;
+			}					
+		}
+		// Step 2: Calculate rotation quaternion to face the player
+		glm::quat rotationQuaternion = glm::rotation(glm::vec3(0.0f, 0.0f, -1.0f), directionToPlayer);
+		glm::mat4 rotationMatrix = glm::toMat4(rotationQuaternion);
 
+		// Step 3: Update the hunter's model matrix with the rotation
+		modelMatrixHunter = glm::mat4(1.0f); // Reset to identity for fresh rotation
+		modelMatrixHunter = glm::translate(modelMatrixHunter, hunterPosition); // Preserve current position
+		modelMatrixHunter *= rotationMatrix; // Apply rotation
 
-	// Get positions of the player and hunter
-	glm::vec3 playerPosition = glm::vec3(modelMatrixProtaBody[3]);  // Player's position
-	glm::vec3 hunterPosition = glm::vec3(modelMatrixHunter[3]);     // Hunter's position
+		// Step 4: Move forward in the local Z direction (towards the player)
+		float moveSpeed = hunterVel; // Speed multiplier
+		glm::vec3 forwardMovement = glm::vec3(0.0f, 0.0f, -moveSpeed); // Local forward direction
+		modelMatrixHunter = glm::translate(modelMatrixHunter, forwardMovement);
 
-	// Step 1: Calculate direction to the player
-	glm::vec3 directionToPlayer = glm::normalize(glm::vec3(playerPosition.x - hunterPosition.x, 
-                                                       0.0f, 
-                                                       playerPosition.z - hunterPosition.z));
- 	//step 1.5 calculate distance to stop player from coming to close
-	float distance  = glm::distance(playerPosition,hunterPosition);
-	if(distance > 1.10f){
-		HunterAnimationIndex= 0; // Animation for walking
-		hunterVel=0.01;
-	} else {
-		HunterAnimationIndex= 1; // Animation for atack
+		// Render the hunter
+		modelMatrixHunter[3][1]= terrain.getHeightTerrain(modelMatrixHunter[3][0], modelMatrixHunter[3][2]); 
+		HunterModelAnimate.setAnimationIndex(HunterAnimationIndex); 
+		HunterModelAnimate.render(modelMatrixHunter);
+	}else{
+		hunterVel=0;
+		modelMatrixHunter[3][1]= terrain.getHeightTerrain(modelMatrixHunter[3][0], modelMatrixHunter[3][2]); 
+		HunterModelAnimate.setAnimationIndex(2); 
+		HunterModelAnimate.render(modelMatrixHunter);
 	}
-	// Step 2: Calculate rotation quaternion to face the player
-	glm::quat rotationQuaternion = glm::rotation(glm::vec3(0.0f, 0.0f, -1.0f), directionToPlayer);
-	glm::mat4 rotationMatrix = glm::toMat4(rotationQuaternion);
+	if(!IsEnemy2Death){
+		modelMatrixCarl[3][1]= terrain.getHeightTerrain(modelMatrixCarl[3][0], modelMatrixCarl[3][2]); 
+		modelMatrixCarlBody = glm::mat4(modelMatrixCarl); // new variable for scaling 
+		//modelMatrixCarlBody = glm::scale(modelMatrixCarlBody,glm::vec3(0.04f));
+		CarlModelAnimate.setAnimationIndex(0);
+		CarlModelAnimate.render(modelMatrixCarlBody);
+	}else{
+		modelMatrixCarl[3][1]= terrain.getHeightTerrain(modelMatrixCarl[3][0], modelMatrixCarl[3][2]); 
+		modelMatrixCarlBody = glm::mat4(modelMatrixCarl);
+		CarlModelAnimate.setAnimationIndex(1);
+		CarlModelAnimate.render(modelMatrixCarlBody);
+	}
 
-	// Step 3: Update the hunter's model matrix with the rotation
-	modelMatrixHunter = glm::mat4(1.0f); // Reset to identity for fresh rotation
-	modelMatrixHunter = glm::translate(modelMatrixHunter, hunterPosition); // Preserve current position
-	modelMatrixHunter *= rotationMatrix; // Apply rotation
+	if(!IsEnemy3Death){
+			// Get positions of the player and hunter
+		glm::vec3 playerPosition = glm::vec3(modelMatrixProtaBody[3]);  // Player's position
+		glm::vec3 hunterPosition = glm::vec3(modelMatrixHunter2[3]);     // Hunter's position
 
-	// Step 4: Move forward in the local Z direction (towards the player)
-	float moveSpeed = hunterVel; // Speed multiplier
-	glm::vec3 forwardMovement = glm::vec3(0.0f, 0.0f, -moveSpeed); // Local forward direction
-	modelMatrixHunter = glm::translate(modelMatrixHunter, forwardMovement);
+		// Step 1: Calculate direction to the player
+		glm::vec3 directionToPlayer = glm::normalize(glm::vec3(playerPosition.x - hunterPosition.x, 
+														0.0f, 
+														playerPosition.z - hunterPosition.z));
+		//step 1.5 calculate distance to stop player from coming to close
+		float distance  = glm::distance(playerPosition,hunterPosition);
+		if(distance > 1.10f){
+			HunterAnimationIndex2= 0; // Animation for walking
+			hunterVel2=0.01;
+		} else {
+			HunterAnimationIndex2= 1;
+			hunterVel2=0;
+			if(!playerHasbeenAttacked){
+				playerHasbeenAttacked=true;
+				inmobile=true;
+				animationProtagonistIndex= IndexAnimationRecibeHit;
+				VidasJugador--;
+			}					
+		}
+		// Step 2: Calculate rotation quaternion to face the player
+		glm::quat rotationQuaternion = glm::rotation(glm::vec3(0.0f, 0.0f, -1.0f), directionToPlayer);
+		glm::mat4 rotationMatrix = glm::toMat4(rotationQuaternion);
 
-	// Render the hunter
-	modelMatrixHunter[3][1]= terrain.getHeightTerrain(modelMatrixHunter[3][0], modelMatrixHunter[3][2]); 
-	HunterModelAnimate.setAnimationIndex(HunterAnimationIndex); 
-	HunterModelAnimate.render(modelMatrixHunter);
+		// Step 3: Update the hunter's model matrix with the rotation
+		modelMatrixHunter2 = glm::mat4(1.0f); // Reset to identity for fresh rotation
+		modelMatrixHunter2 = glm::translate(modelMatrixHunter2, hunterPosition); // Preserve current position
+		modelMatrixHunter2 *= rotationMatrix; // Apply rotation
 
-	glm::mat4 modelMatrixCarlBody2 = glm::mat4(modelMatrixCarl2); // new variable for scaling 
-	//modelMatrixCarlBody2 = glm::scale(modelMatrixCarlBody2,glm::vec3(0.04f)); 
-	CarlModelAnimate.render(modelMatrixCarlBody2); 
+		// Step 4: Move forward in the local Z direction (towards the player)
+		float moveSpeed = hunterVel2; // Speed multiplier
+		glm::vec3 forwardMovement = glm::vec3(0.0f, 0.0f, -moveSpeed); // Local forward direction
+		modelMatrixHunter2 = glm::translate(modelMatrixHunter2, forwardMovement);
 
-	glm::mat4 modelMatrixHunterBody2 = glm::mat4(modelMatrixHunter2); // new variable for scaling 
-	//modelMatrixHunterBody2 = glm::scale(modelMatrixHunterBody2,glm::vec3(0.01f)); 
-	HunterModel2Animate.setAnimationIndex(1); 
-	HunterModel2Animate.render(modelMatrixHunterBody2);
+		// Render the hunter
+		modelMatrixHunter2[3][1]= terrain.getHeightTerrain(modelMatrixHunter2[3][0], modelMatrixHunter2[3][2]); 
+		HunterModel2Animate.setAnimationIndex(HunterAnimationIndex2); 
+		HunterModel2Animate.render(modelMatrixHunter2);
+	}else{
+		hunterVel2=0;
+		modelMatrixHunter2[3][1]= terrain.getHeightTerrain(modelMatrixHunter2[3][0], modelMatrixHunter2[3][2]); 
+		HunterModel2Animate.setAnimationIndex(2); 
+		HunterModel2Animate.render(modelMatrixHunter2);
+	}
+
+	if(!IsEnemy4Death){
+		modelMatrixCarl2[3][1]= terrain.getHeightTerrain(modelMatrixCarl2[3][0], modelMatrixCarl2[3][2]); 
+		modelMatrixCarlBody2 = glm::mat4(modelMatrixCarl2); // new variable for scaling 
+		//modelMatrixCarlBody = glm::scale(modelMatrixCarlBody,glm::vec3(0.04f));
+		CarlModel2Animate.setAnimationIndex(0);
+		CarlModel2Animate.render(modelMatrixCarlBody2);
+	}else{
+		modelMatrixCarl2[3][1]= terrain.getHeightTerrain(modelMatrixCarl2[3][0], modelMatrixCarl2[3][2]); 
+		modelMatrixCarlBody2 = glm::mat4(modelMatrixCarl2);
+		CarlModel2Animate.setAnimationIndex(1);
+		CarlModel2Animate.render(modelMatrixCarlBody2);
+	}
+
 
 	glm::mat4 modelMatrixmodelAircraftVehiculeBody = glm::mat4(modelMatrixAircraft); 
 	modelMatrixmodelAircraftVehiculeBody[3][1]= terrain.getHeightTerrain(modelMatrixmodelAircraftVehiculeBody[3][0], modelMatrixmodelAircraftVehiculeBody[3][2]) +1.8f+ currentNaveHeight; 
@@ -1398,7 +1493,7 @@ void WaitTime() { // For variables that requiere time passage
             float progress = elapsedTime / animationDuration;
         }
     }
-	if (playerHasbeenAttacked) {
+	if (playerHasbeenAttacked && animationProtagonistIndex !=IndexFinalDeath ) {
 		RenderTextVidas();
         currentTime2 = deltaTime;
         elapsedTime2 = currentTime2 + elapsedTime2;
@@ -1641,16 +1736,20 @@ void applicationLoop() {
 			glBindTexture(GL_TEXTURE_2D, textureActivaID);
 			shaderTexture.setInt("outTexture", 0);
 			boxIntro.render();
+			int fontsizePrologo=50;
+			if(textureActivaID == textureInit2ID){
+				modelTextInit->render("Mision:",-0.7f,-0.1f,1,0.5,0,250);
+				modelTextPrologo -> render("Has sido enviado a marte ",-0.80f,-0.70f,0,0,0,fontsizePrologo);
+				modelTextPrologo2 -> render("para acabar con una rebelion Robot",-0.80f,-0.90f,0,0,0,fontsizePrologo);
+			}else if (textureActivaID == textureInit1ID){
+				modelTextInit->render("Mars " ,-0.8f,0.1f,1,0.5,0,180);
+				modelTextInit2->render("Rebelion" ,-0.8f,-0.3f,1,0.5,0,180);
+				modelTextPrologo -> render("Y : para jugar X : para salir" ,-0.70f,-0.70f,0,0,0,fontsizePrologo);
+				modelTextPrologo2 -> render("A : para prologo / regresar",-0.7f,-0.90f,0,0,0,fontsizePrologo);	
+			}
 			glfwSwapBuffers(window);
 			continue;
-			if(textureActivaID = textureInit2ID){
-				modelTextInit->render("Mision: ",-.7f,.7f,1,0,0,50);
-				modelTextPrologo -> render("Has sido enviado a marte para acabar con una rebelion Robot",-.7f,.7f,0,0,0,25);
-			}else{
-				modelTextInit->render("Mars Rebelion" ,-.7f,.7f,1,0,0,50);
-				modelTextPrologo -> render("Presiona Y para jugar \n X para salir /n A para prologo" ,-.7f,.7f,0,0,0,25);
-				
-			}
+			
 			
 		}
 
@@ -1719,7 +1818,7 @@ void applicationLoop() {
 
 		//Collider Carl
 
-		glm::mat4 modelMatrixColliderCarl = glm::mat4(modelMatrixCarlBody);
+		glm::mat4 modelMatrixColliderCarl = glm::mat4(modelMatrixCarlBody2);
 		AbstractModel::OBB CarlCollider;
 		// Set the orientation of collider before doing the scale
 		CarlCollider.u = glm::quat_cast(modelMatrixCarl);
@@ -1730,7 +1829,23 @@ void applicationLoop() {
 				CarlModelAnimate.getObb().c.z));
 		CarlCollider.c = glm::vec3(modelMatrixColliderCarl[3] + glm::vec4(0,1.25,0,0.0));
 		CarlCollider.e = CarlModelAnimate.getObb().e * glm::vec3(1.0,8.0,1.0f) * glm::vec3(0.787401574, 0.787401574, 0.787401574);
-		addOrUpdateColliders(collidersOBB, "carl1", CarlCollider, modelMatrixCarlBody);
+		addOrUpdateColliders(collidersOBB, "Carl1", CarlCollider, modelMatrixCarlBody);
+
+		//Collider carl 2
+
+		glm::mat4 modelMatrixColliderCarl2 = glm::mat4(modelMatrixCarlBody2);
+		AbstractModel::OBB CarlCollider2;
+		// Set the orientation of collider before doing the scale
+		CarlCollider2.u = glm::quat_cast(modelMatrixCarl2);
+		modelMatrixColliderCarl2 = glm::scale(modelMatrixColliderCarl2,glm::vec3(1.0,8.0,1.0f));
+		modelMatrixColliderCarl2 = glm::translate(modelMatrixCarlBody2,
+		glm::vec3(CarlModel2Animate.getObb().c.x,
+				CarlModel2Animate.getObb().c.y,
+				CarlModel2Animate.getObb().c.z));
+		CarlCollider2.c = glm::vec3(modelMatrixColliderCarl2[3] + glm::vec4(0,1.25,0,0.0));
+		CarlCollider2.e = CarlModel2Animate.getObb().e * glm::vec3(1.0,8.0,1.0f) * glm::vec3(0.787401574, 0.787401574, 0.787401574);
+		addOrUpdateColliders(collidersOBB, "Carl2", CarlCollider2, modelMatrixCarlBody2);
+
 
 		//Collider Hunter
 		
@@ -1746,6 +1861,21 @@ void applicationLoop() {
 		HunterCollider.c = glm::vec3(modelMatrixColliderHunter[3] + glm::vec4(0,1.5,-0.5,0.0));
 		HunterCollider.e = HunterModelAnimate.getObb().e * glm::vec3(0.3,2.0,0.3);
 		addOrUpdateColliders(collidersOBB, "Hunter1", HunterCollider, modelMatrixHunter);
+
+		//Collider Hunter 2
+		
+		glm::mat4 modelMatrixColliderHunter2 = glm::mat4(modelMatrixHunter2);
+		AbstractModel::OBB HunterCollider2;
+		// Set the orientation of collider before doing the scale
+		HunterCollider2.u = glm::quat_cast(modelMatrixHunter2);
+		modelMatrixColliderHunter2 = glm::scale(modelMatrixColliderHunter2,glm::vec3(0.3,2.0,0.3));
+		modelMatrixColliderHunter2 = glm::translate(modelMatrixColliderHunter2,
+			glm::vec3(HunterModel2Animate.getObb().c.x,
+				HunterModel2Animate.getObb().c.y,
+				HunterModel2Animate.getObb().c.z));
+		HunterCollider2.c = glm::vec3(modelMatrixColliderHunter2[3] + glm::vec4(0,1.5,-0.5,0.0));
+		HunterCollider2.e = HunterModel2Animate.getObb().e * glm::vec3(0.3,2.0,0.3);
+		addOrUpdateColliders(collidersOBB, "Hunter2", HunterCollider2, modelMatrixHunter2);
 
 		//Collider del la rock
 		AbstractModel::SBB rockCollider;
@@ -1908,16 +2038,10 @@ void applicationLoop() {
 					if (itCollision->first.compare("Protagonist") == 0)
 						modelMatrixProtagonist = std::get<1>(obbBuscado->second);
 					if (itCollision->first.compare("Hunter1") == 0){
-						modelMatrixColliderHunter = std::get<1>(obbBuscado->second);
-						std::cout <<"Caso Hunter"<<std::endl;
-						if(!playerHasbeenAttacked){
-							std::cout << "HURT!" << std::endl;
-							VidasJugador--;
-							playerHasbeenAttacked=true;
-							inmobile=true;
-							hunterVel=0;
-							animationProtagonistIndex= IndexAnimationRecibeHit;
-						}
+						modelMatrixHunter = std::get<1>(obbBuscado->second);
+					}
+					if (itCollision->first.compare("Hunter2") == 0){
+						modelMatrixHunter2 = std::get<1>(obbBuscado->second);
 					}
 
 				}
@@ -1944,14 +2068,43 @@ void applicationLoop() {
 				std::get<0>(itSBB->second), tRint)) {
 				std::cout << "Collision del rayo con el modelo " << itSBB->first 
 				<< std::endl;
+				
 			}
 		}
 		std::map<std::string, std::tuple<AbstractModel::OBB, glm::mat4, glm::mat4>>::
 			iterator itOBB;
 		for (itOBB = collidersOBB.begin(); itOBB != collidersOBB.end(); itOBB++) {
 			if (testRayOBB(ori, targetRay, std::get<0>(itOBB->second))) {
-				std::cout << "Collision del rayo con el modelo " << itOBB->first
-					<< std::endl;
+					if(animationRuningShootingRunning && itOBB->first=="Hunter1"){
+					//HunterModelAnimate.destroy(); //destroy hunter
+					std::cout << "Disparo a Hunter 1" << itOBB->first<< std::endl;
+					if(!IsEnemy1Death){
+						IsEnemy1Death = true;
+						TOTALSCORE++;
+					}
+					}
+					if(animationRuningShootingRunning && itOBB->first=="Carl1"){
+					std::cout << "Disparo a Carl 1" << itOBB->first<< std::endl;
+					if(!IsEnemy2Death){
+						IsEnemy2Death = true;
+						TOTALSCORE++;
+					}
+					}
+					if(animationRuningShootingRunning && itOBB->first=="Hunter2"){
+					//HunterModelAnimate.destroy(); //destroy hunter
+					std::cout << "Disparo a Hunter 2" << itOBB->first<< std::endl;
+					if(!IsEnemy3Death){
+						IsEnemy3Death = true;
+						TOTALSCORE++;
+					}
+					}
+					if(animationRuningShootingRunning && itOBB->first=="Carl2"){
+					std::cout << "Disparo a Carl 2" << itOBB->first<< std::endl;
+					if(!IsEnemy4Death){
+						IsEnemy4Death = true;
+						TOTALSCORE++;
+					}
+					}
 			}
 		}
 		
@@ -2027,6 +2180,7 @@ void applicationLoop() {
 			}
 		//Hunter
 		HunterMoveFordward++;
+		HunterMoveFordward2++;
 	}
 }
 
