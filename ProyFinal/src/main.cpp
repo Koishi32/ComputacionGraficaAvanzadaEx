@@ -324,6 +324,9 @@ glm::vec3 TransformGIMPCoordenatesToOpenGLPixels(glm::vec3 coordenadas);
 void TransformForObjects();
 void LookTowardsObject(glm::mat4 MyOrgPos, glm::mat4 Objective);
 void MoveTowardsObject(glm::mat4 MyOrgPos, glm::mat4 Objective);
+
+void attackFunction();
+
 glm::vec3 TransformGIMPCoordenatesToOpenGLPixels(glm::vec3 coordenadas){
 		glm::vec3 resultado = glm::vec3(0,0,0);
 		resultado.x = (coordenadas.x - 256) / 2.56;
@@ -978,6 +981,10 @@ bool processInput(bool continueApplication) {
 		CerraTodo_Salir =(state.buttons[GLFW_GAMEPAD_BUTTON_X] == GLFW_PRESS);
 		presionarEmpezarPartida = (state.buttons[GLFW_GAMEPAD_BUTTON_Y] == GLFW_PRESS);
 		presionarContinuar = (state.buttons[GLFW_GAMEPAD_BUTTON_A] == GLFW_PRESS);
+	} else{
+		CerraTodo_Salir =(glfwGetKey(window,GLFW_KEY_X) == GLFW_PRESS);
+		presionarEmpezarPartida = ( glfwGetKey(window,GLFW_KEY_Y) == GLFW_PRESS);
+		presionarContinuar = (glfwGetKey(window,GLFW_KEY_A) == GLFW_PRESS);
 	}
 	if(CerraTodo_Salir){
 		exitApp=true;
@@ -1007,11 +1014,17 @@ bool processInput(bool continueApplication) {
 			if (glfwGetGamepadState(GLFW_JOYSTICK_1, &state)) {
 			int axesCount, buttonCount;
 			const float * axes = glfwGetJoystickAxes(GLFW_JOYSTICK_1, &axesCount);
+			float AxisLeftUpDonw;
+			float AxisLeftX;
+			float AxisRightX;
+			float AxisRightY;
 			//Movimiento axis XZ 
-			float AxisLeftUpDonw = state.axes[GLFW_GAMEPAD_AXIS_LEFT_Y]; 
-			float AxisLeftX = state.axes[GLFW_GAMEPAD_AXIS_LEFT_X]; 
-			float AxisRightX= state.axes[GLFW_GAMEPAD_AXIS_RIGHT_X];
-			float AxisRightY= state.axes[GLFW_GAMEPAD_AXIS_RIGHT_Y];
+
+			AxisLeftUpDonw = state.axes[GLFW_GAMEPAD_AXIS_LEFT_Y];
+			AxisLeftX = state.axes[GLFW_GAMEPAD_AXIS_LEFT_X];
+			AxisRightX= state.axes[GLFW_GAMEPAD_AXIS_RIGHT_X];
+			AxisRightY= state.axes[GLFW_GAMEPAD_AXIS_RIGHT_Y];
+			
 			if( ((AxisLeftUpDonw>0.5 || AxisLeftUpDonw<-0.5) || (AxisLeftX>0.5 || AxisLeftX<-0.5)) && !animationRuningShootingRunning && !inmobile ){ 
 				modelMatrixProtagonist = glm::translate(modelMatrixProtagonist, glm::vec3(0.02*AxisLeftX*-1 *velProtagonist, 0.0, 0.02*AxisLeftUpDonw*-1*velProtagonist)); 
 				if(AxisLeftX<-0.5){ 
@@ -1037,12 +1050,8 @@ bool processInput(bool continueApplication) {
 				//std::cout<< camera->pitch << std::endl;
 			} 
 			//Boton de ataque 
-			if((state.buttons[GLFW_GAMEPAD_BUTTON_Y] == GLFW_PRESS) && !animationRuningShootingRunning && !inmobile){ 
-				animationProtagonistIndex=IndexAnimationShoot;
-				animationRuningShootingRunning=true;
-				sourcesPlay[1] = false;
-				alSourcePlay(source[1]);
-				lastTimeParticlesAnimation = currTimeParticlesAnimation; // reset animation shot
+			if((state.buttons[GLFW_GAMEPAD_BUTTON_Y] == GLFW_PRESS || glfwGetKey(window,GLFW_MOUSE_BUTTON_LEFT)== GLFW_PRESS) && !animationRuningShootingRunning && !inmobile){ 
+				attackFunction();
 			}
 			if( !((AxisLeftUpDonw>0.5 || AxisLeftUpDonw<-0.5) || (AxisLeftX>0.5 || AxisLeftX<-0.5))  && !animationRuningShootingRunning && !isJump && !inmobile){
 				animationProtagonistIndex=IndexAnimationIdle; 
@@ -1050,8 +1059,8 @@ bool processInput(bool continueApplication) {
 
 			const unsigned char * buttons = glfwGetJoystickButtons(GLFW_JOYSTICK_1, &buttonCount);
 			//std::cout << "Número de botones disponibles :=>" << buttonCount << std::endl;
-			if(buttons[1] == GLFW_PRESS)
-			//	std::cout << "Se presiona A" << std::endl;
+			/*if(buttons[1] == GLFW_PRESS)
+				std::cout << "Se presiona A" << std::endl;*/
 
 			if(!isJump && buttons[1] == GLFW_PRESS && !animationRuningShootingRunning && !inmobile){
 				isJump = true;
@@ -1059,10 +1068,18 @@ bool processInput(bool continueApplication) {
 				tmv = 0;
 			}
 		}
-	}else{
-		//animationProtagonistIndex = IndexAnimationDeath;
+		else
+		{	
+			if(glfwGetKey(window,GLFW_MOUSE_BUTTON_LEFT)==GLFW_PRESS){
+				attackFunction();
+			}
+		}
 	}
-	
+	/*else{
+		animationProtagonistIndex = IndexAnimationDeath;
+	}*/
+
+
 
 	if(glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
 		camera->mouseMoveCamera(offsetX, 0.0, deltaTime);
@@ -1075,6 +1092,13 @@ bool processInput(bool continueApplication) {
 	return continueApplication;
 }
 
+void attackFunction(){
+	animationProtagonistIndex=IndexAnimationShoot;
+	animationRuningShootingRunning=true;
+	sourcesPlay[1] = false;
+	alSourcePlay(source[1]);
+	lastTimeParticlesAnimation = currTimeParticlesAnimation; // reset animation shot
+}
 void prepareScene(){
 
 	terrain.setShader(&shaderTerrain);

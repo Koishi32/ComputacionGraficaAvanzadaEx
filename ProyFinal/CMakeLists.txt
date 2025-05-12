@@ -28,6 +28,9 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     )
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     include_directories(${CMAKE_SOURCE_DIR}/CGALib/include)
+    include_directories(/usr/include/freetype2  -I/usr/local/include/freetype2  -I/usr/include/libpng16)
+    #find_package(Freetype);
+    #target_link_libraries(project_name freetype);
 endif()
 
 add_executable(ProyFinal ./src/main.cpp)
