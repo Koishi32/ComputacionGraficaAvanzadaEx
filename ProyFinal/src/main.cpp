@@ -1047,10 +1047,9 @@ bool processInput(bool continueApplication) {
 				}else{
 					camera->mouseMoveCamera(0.0,0.3f*(AxisRightY)*-1, deltaTime);
 				}
-				//std::cout<< camera->pitch << std::endl;
 			} 
 			//Boton de ataque 
-			if((state.buttons[GLFW_GAMEPAD_BUTTON_Y] == GLFW_PRESS || glfwGetKey(window,GLFW_MOUSE_BUTTON_LEFT)== GLFW_PRESS) && !animationRuningShootingRunning && !inmobile){ 
+			if((state.buttons[GLFW_GAMEPAD_BUTTON_Y] == GLFW_PRESS) && !animationRuningShootingRunning && !inmobile){ 
 				attackFunction();
 			}
 			if( !((AxisLeftUpDonw>0.5 || AxisLeftUpDonw<-0.5) || (AxisLeftX>0.5 || AxisLeftX<-0.5))  && !animationRuningShootingRunning && !isJump && !inmobile){
@@ -1068,26 +1067,55 @@ bool processInput(bool continueApplication) {
 				tmv = 0;
 			}
 		}
-		else
-		{	
-			if(glfwGetKey(window,GLFW_MOUSE_BUTTON_LEFT)==GLFW_PRESS){
+		else // IF NO GAME PAD AVAILABLE SWITCH TO KEYBOARD
+		{
+			int forwardWalk;
+
+			int SideWalk;
+			
+			if (glfwGetKey(window,GLFW_KEY_W) == GLFW_PRESS){
+				forwardWalk = -1;
+				animationProtagonistIndex= IndexAnimationWalk;
+			}else if (glfwGetKey(window,GLFW_KEY_S) == GLFW_PRESS){
+				forwardWalk = 1;
+				animationProtagonistIndex=IndexAnimationRunBack;
+			}else{
+				forwardWalk=0;
+			}
+
+			if (glfwGetKey(window,GLFW_KEY_A) == GLFW_PRESS){
+				SideWalk = -1;
+				animationProtagonistIndex= IndexAnimationMoveLeft; 
+			}else if (glfwGetKey(window,GLFW_KEY_D) == GLFW_PRESS){
+				SideWalk = 1;
+				animationProtagonistIndex=IndexAnimationMoveRight;
+			}else{
+				SideWalk=0;
+			}
+
+			modelMatrixProtagonist = glm::translate(modelMatrixProtagonist, glm::vec3(0.02*SideWalk*-1 *velProtagonist, 0.0, 0.02*forwardWalk*-1*velProtagonist));
+
+			if(glfwGetMouseButton(window,GLFW_MOUSE_BUTTON_1)==GLFW_PRESS){
 				attackFunction();
 			}
+			if(((forwardWalk==0) && (SideWalk==0))  && !animationRuningShootingRunning && !isJump && !inmobile){
+				animationProtagonistIndex=IndexAnimationIdle; 
+			}
+			if(!isJump && glfwGetKey(window,GLFW_KEY_SPACE) == GLFW_PRESS && !animationRuningShootingRunning && !inmobile){
+				isJump = true;
+				startTimeJump = currTime;
+				tmv = 0;
+			}
+			if(glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+				camera->mouseMoveCamera(offsetX, 0.0, deltaTime);
+			if(glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
+				camera->mouseMoveCamera(0.0, offsetY, deltaTime);
+
+			offsetX = 0;
+			offsetY = 0;
 		}
 	}
-	/*else{
-		animationProtagonistIndex = IndexAnimationDeath;
-	}*/
 
-
-
-	if(glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
-		camera->mouseMoveCamera(offsetX, 0.0, deltaTime);
-	if(glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
-		camera->mouseMoveCamera(0.0, offsetY, deltaTime);
-
-	offsetX = 0;
-	offsetY = 0;
 	glfwPollEvents();
 	return continueApplication;
 }
@@ -1105,15 +1133,12 @@ void prepareScene(){
 	
 	modelRock.setShader(&shaderMulLighting);
 
-	//modelPistol.setShader(&shaderMulLighting);
-
 	modelAircraft.setShader(&shaderMulLighting);
 	modelAircraftVehicule.setShader(&shaderMulLighting);
 
 	//Lamp models
 	modelLampPlant1.setShader(&shaderMulLighting);
 	modelLampPlant2.setShader(&shaderMulLighting);
-
 
 	//My characters
 	CarlModelAnimate.setShader(&shaderMulLighting);
@@ -1131,16 +1156,12 @@ void prepareDepthScene(){
 	
 	modelRock.setShader(&shaderDepth);
 
-	//modelPistol.setShader(&shaderDepth);
-
 	modelAircraft.setShader(&shaderDepth);
 	modelAircraftVehicule.setShader(&shaderDepth);
 
-	//Lamp models
 	modelLampPlant1.setShader(&shaderDepth);
 	modelLampPlant2.setShader(&shaderDepth);
 
-	//My charcters Depth
 	CarlModelAnimate.setShader(&shaderDepth);
 	ProtagonistModelAnimate.setShader(&shaderDepth);
 	HunterModelAnimate.setShader(&shaderDepth);
@@ -1919,8 +1940,7 @@ void applicationLoop() {
 			AbstractModel::OBB lampCollider;
 			glm::mat4 modelMatrixColliderLamp = glm::mat4(1.0);
 			modelMatrixColliderLamp = glm::translate(modelMatrixColliderLamp, LampPlantPostion[i]);
-			modelMatrixColliderLamp = glm::rotate(modelMatrixColliderLamp, glm::radians(LampPlantOrientation[i]),
-					glm::vec3(0, 1, 0));
+			modelMatrixColliderLamp = glm::rotate(modelMatrixColliderLamp, glm::radians(LampPlantOrientation[i]),glm::vec3(0, 1, 0));
 			addOrUpdateColliders(collidersOBB, "lamp1-" + std::to_string(i), lampCollider, modelMatrixColliderLamp);
 			// Set the orientation of collider before doing the scale
 			lampCollider.u = glm::quat_cast(modelMatrixColliderLamp);
