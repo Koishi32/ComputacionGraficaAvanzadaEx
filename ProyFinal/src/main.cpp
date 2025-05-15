@@ -171,6 +171,7 @@ glm::mat4 modelMatrixCarl2 = glm::mat4(1.0f);
 static glm::mat4 modelMatrixHunter2 = glm::mat4(1.0f);
 glm::mat4 modelMatrixProtagonist = glm::mat4(1.0f);
 glm::mat4 modelMatrixmodelAircraftVehiculeBody = glm::mat4(1.0f);
+glm::mat4 modelMatrixParticlesLazer;
 
 //Lamps Plant  Positions contro how many and where 
 std::vector<glm::vec3> LampPlantPostion ={ // multiple lights 
@@ -220,16 +221,30 @@ double startTimeJump = 0;
 float velProtagonist=12.0f;
 float angleDegreesToProtagonist=0;
 
- float HunterMoveFordward = 1.0f;
- float hunterVel = 0.01f;
+float HunterMoveFordward = 1.0f;
+float hunterVel = 0.01f;
 int HunterAnimationIndex=0;
 
- float HunterMoveFordward2 = 1.0f;
- float hunterVel2 = 0.01f;
+float HunterMoveFordward2 = 1.0f;
+float hunterVel2 = 0.01f;
 int HunterAnimationIndex2=0;
 
- float CarlMoveFordwar = 1.5f;
- float CarlVel = 0.02f;
+int Carl1State=0;
+int Carl2State=0;
+
+float CarlMoveFordward = 1.5f;
+float CarlVel = 0.02f;
+
+float CarlMoveFordwar2 = 1.5f;
+float CarlVel2 = 0.02f;
+
+const float CarlsY_Offset = 0.12f;
+
+float NewCarlDirection2=0.0f;
+float CarlMoveStep2=0.0f;
+
+float NewCarlDirection=0.0f;
+float CarlMoveStep=0.0f;
 
 float rotNave=0.0f; 
 float currentNaveHeight=0.0f,NaveStep=0.02f; 
@@ -293,7 +308,7 @@ GLuint depthMap, depthMapFBO;
 //Definicion de variables para el sistema de particulas de Rayo
 GLuint initVel,startTime;
 GLuint VAOParticles;
-GLuint nParticles = 200;
+GLuint nParticles = 25;
 double currTimeParticlesAnimation, lastTimeParticlesAnimation;
 
 //!!!!!!!!!!
@@ -305,8 +320,7 @@ glm::mat4 modelMatrixHunterBody2;
 
 // Se definen todos las funciones.
 void reshapeCallback(GLFWwindow *Window, int widthRes, int heightRes);
-void keyCallback(GLFWwindow *window, int key, int scancode, int action,
-		int mode);
+void keyCallback(GLFWwindow *window, int key, int scancode, int action,int mode);
 void mouseCallback(GLFWwindow *window, double xpos, double ypos);
 void mouseButtonCallback(GLFWwindow *window, int button, int state, int mod);
 void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
@@ -1025,7 +1039,7 @@ bool processInput(bool continueApplication) {
 			AxisRightX= state.axes[GLFW_GAMEPAD_AXIS_RIGHT_X];
 			AxisRightY= state.axes[GLFW_GAMEPAD_AXIS_RIGHT_Y];
 			
-			if( ((AxisLeftUpDonw>0.5 || AxisLeftUpDonw<-0.5) || (AxisLeftX>0.5 || AxisLeftX<-0.5)) && !animationRuningShootingRunning && !inmobile ){ 
+			if( ((AxisLeftUpDonw>0.5 || AxisLeftUpDonw<-0.5) || (AxisLeftX>0.5 || AxisLeftX<-0.5)) && !inmobile  && !animationRuningShootingRunning ){ //
 				modelMatrixProtagonist = glm::translate(modelMatrixProtagonist, glm::vec3(0.02*AxisLeftX*-1 *velProtagonist, 0.0, 0.02*AxisLeftUpDonw*-1*velProtagonist)); 
 				if(AxisLeftX<-0.5){ 
 					animationProtagonistIndex= IndexAnimationMoveLeft; 
@@ -1037,7 +1051,7 @@ bool processInput(bool continueApplication) {
 					animationProtagonistIndex= IndexAnimationWalk; 
 				} 
 			} 
-			if(AxisRightX!=0 && !animationRuningShootingRunning && !inmobile){ 
+			if(AxisRightX!=0 && !inmobile && !animationRuningShootingRunning){  // 
 				modelMatrixProtagonist = glm::rotate(modelMatrixProtagonist,0.02f*AxisRightX*-1,glm::vec3(0,1,0));
 				camera->mouseMoveCamera(0.02f*AxisRightX*-1,0.0, deltaTime);
 				if(camera->pitch < 0.038 ){
@@ -1098,7 +1112,7 @@ bool processInput(bool continueApplication) {
 			if(glfwGetMouseButton(window,GLFW_MOUSE_BUTTON_1)==GLFW_PRESS){
 				attackFunction();
 			}
-			if(((forwardWalk==0) && (SideWalk==0))  && !animationRuningShootingRunning && !isJump && !inmobile){
+			if(((forwardWalk==0) && (SideWalk==0)) && !animationRuningShootingRunning && !isJump && !inmobile){ // 
 				animationProtagonistIndex=IndexAnimationIdle; 
 			}
 			if(!isJump && glfwGetKey(window,GLFW_KEY_SPACE) == GLFW_PRESS && !animationRuningShootingRunning && !inmobile){
@@ -1185,7 +1199,7 @@ void generatePointLight(glm::vec3 LampPlantPostion2,int i,glm::vec3 DiffuseColor
 	shaderTerrain.setVectorFloat3("pointLights["+std::to_string(i)+"].position",glm::value_ptr(glm::vec3(LampPlantPostion2))); 
 	shaderTerrain.setFloat("pointLights["+std::to_string(i)+"].constant",1.0); 
 	shaderTerrain.setFloat("pointLights["+std::to_string(i)+"].linear",0.09); 
-	shaderTerrain.setFloat("pointLights["+std::to_string(i)+"].quadratic", quadratic); 
+	shaderTerrain.setFloat("pointLights["+std::to_string(i)+"].quadratic", quadratic);
 } 
 void PointLightGeneratePlant1(glm::vec3 PositionInsidePlant){ 
 	for(int i = 0; i < LampPlantPostion.size();i++){ // Recordar transformacion de abajo haca arribase aplican 
@@ -1291,6 +1305,8 @@ void renderSolidScene(){
 	ProtagonistModelAnimate.render(modelMatrixProtaBody);
 	//animationProtagonistIndex=IndexAnimationIdle;
 
+	//HUNTER 1 BEHAVIOUR
+
 	if(!IsEnemy1Death){
 			// Get positions of the player and hunter
 		glm::vec3 playerPosition = glm::vec3(modelMatrixProtaBody[3]);  // Player's position
@@ -1339,18 +1355,8 @@ void renderSolidScene(){
 		HunterModelAnimate.setAnimationIndex(2); 
 		HunterModelAnimate.render(modelMatrixHunter);
 	}
-	if(!IsEnemy2Death){
-		modelMatrixCarl[3][1]= terrain.getHeightTerrain(modelMatrixCarl[3][0], modelMatrixCarl[3][2]); 
-		modelMatrixCarlBody = glm::mat4(modelMatrixCarl); // new variable for scaling 
-		//modelMatrixCarlBody = glm::scale(modelMatrixCarlBody,glm::vec3(0.04f));
-		CarlModelAnimate.setAnimationIndex(0);
-		CarlModelAnimate.render(modelMatrixCarlBody);
-	}else{
-		modelMatrixCarl[3][1]= terrain.getHeightTerrain(modelMatrixCarl[3][0], modelMatrixCarl[3][2]); 
-		modelMatrixCarlBody = glm::mat4(modelMatrixCarl);
-		CarlModelAnimate.setAnimationIndex(1);
-		CarlModelAnimate.render(modelMatrixCarlBody);
-	}
+
+	//HUNTER 2 BEHAVIOUR
 
 	if(!IsEnemy3Death){
 			// Get positions of the player and hunter
@@ -1401,15 +1407,32 @@ void renderSolidScene(){
 		HunterModel2Animate.render(modelMatrixHunter2);
 	}
 
+	//CARL 1 BEHAVIOUR
+
+	if(!IsEnemy2Death){
+		
+		modelMatrixCarlBody = glm::mat4(modelMatrixCarl); // new variable for scaling
+		modelMatrixCarlBody = glm::translate(modelMatrixCarlBody,glm::vec3(0,0,CarlVel * -CarlMoveFordward));
+		modelMatrixCarlBody[3][1]= terrain.getHeightTerrain(modelMatrixCarlBody[3][0], modelMatrixCarlBody[3][2]) + CarlsY_Offset;
+		CarlModelAnimate.setAnimationIndex(0);
+		CarlModelAnimate.render(modelMatrixCarlBody);
+	}else{ // IF THE ROBOT DIES DO THE FOLLOWING
+		modelMatrixCarlBody[3][1]= terrain.getHeightTerrain(modelMatrixCarlBody[3][0], modelMatrixCarlBody[3][2]) + CarlsY_Offset; 
+		CarlModelAnimate.setAnimationIndex(1);
+		CarlModelAnimate.render(modelMatrixCarlBody);
+	}
+
+	//CARL 2 BEHAVIOUR
+
 	if(!IsEnemy4Death){
-		modelMatrixCarl2[3][1]= terrain.getHeightTerrain(modelMatrixCarl2[3][0], modelMatrixCarl2[3][2]); 
-		modelMatrixCarlBody2 = glm::mat4(modelMatrixCarl2); // new variable for scaling 
-		//modelMatrixCarlBody = glm::scale(modelMatrixCarlBody,glm::vec3(0.04f));
+		modelMatrixCarlBody2 = glm::mat4(modelMatrixCarl2); // new variable for scaling
+		modelMatrixCarlBody2 = glm::rotate(modelMatrixCarlBody2, glm::radians(NewCarlDirection2), glm::vec3(0, 1, 0)); // Rotate around Y axis
+		modelMatrixCarlBody2 = glm::translate(modelMatrixCarlBody2,glm::vec3(0,0,CarlVel2 * CarlMoveFordwar2));
+		modelMatrixCarlBody2[3][1]= terrain.getHeightTerrain(modelMatrixCarlBody2[3][0], modelMatrixCarlBody2[3][2])+ CarlsY_Offset; 
 		CarlModel2Animate.setAnimationIndex(0);
 		CarlModel2Animate.render(modelMatrixCarlBody2);
-	}else{
-		modelMatrixCarl2[3][1]= terrain.getHeightTerrain(modelMatrixCarl2[3][0], modelMatrixCarl2[3][2]); 
-		modelMatrixCarlBody2 = glm::mat4(modelMatrixCarl2);
+	}else{ // DO IF IT DIES
+		modelMatrixCarlBody2[3][1]= terrain.getHeightTerrain(modelMatrixCarlBody2[3][0], modelMatrixCarlBody2[3][2]) + CarlsY_Offset;
 		CarlModel2Animate.setAnimationIndex(1);
 		CarlModel2Animate.render(modelMatrixCarlBody2);
 	}
@@ -1471,26 +1494,37 @@ void renderAlphaScene(bool render){
 		}
 		else if (render && it->second.first.compare("LazerSource")==0){
 			//Se renderiza el sistema de particulas
-			glm::mat4 modelMatrixParticlesLazer = glm::mat4(modelMatrixProtagonist);
-			modelMatrixParticlesLazer = glm::translate(modelMatrixParticlesLazer,LocalizacionProtaGun);
+			
+			//modelMatrixParticlesLazer = glm::mat4(modelMatrixProtagonist);
+			glm::mat4 localPos;
+			if(lastTimeParticlesAnimation == currTimeParticlesAnimation){
+
+				modelMatrixParticlesLazer = glm::mat4(modelMatrixProtagonist);
+				localPos=modelMatrixParticlesLazer;
+					
+			}else{
+				localPos = glm::mat4(modelMatrixParticlesLazer);
+			}
+
+			localPos = glm::translate(localPos,LocalizacionProtaGun);
 			//modelMatrixParticlesLazer =  glm::translate(modelMatrixParticlesLazer,LocalizacionProtaGun);
 			//modelMatrixParticlesLazer[3][1] = terrain.getHeightTerrain(modelMatrixParticlesLazer[3][0],modelMatrixParticlesLazer[3][2]) + 1.0;
-			modelMatrixParticlesLazer = glm::scale(modelMatrixParticlesLazer,glm::vec3(1.0f));
+			localPos = glm::scale(localPos,glm::vec3(1.0f));
 			currTimeParticlesAnimation = TimeManager::Instance().GetTime();
 			if((currTimeParticlesAnimation - lastTimeParticlesAnimation >1.5f ) && animationRuningShootingRunning){ //tiempo actual menos ultima medicion mayor a 10, termino animacion
 				lastTimeParticlesAnimation = currTimeParticlesAnimation; // Reiniciar animacion
 			}
 			glDepthMask(GL_FALSE);
 			// Particle size
-			glPointSize (20.0f);
+			glPointSize (10.0f);
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, textureParticlesLazerID);
 			textureParticlesLazer.turnOn();
 			textureParticlesLazer.setFloat("Time",float (currTimeParticlesAnimation - lastTimeParticlesAnimation)); // segundo desde que inicio la animacion
-			textureParticlesLazer.setFloat("ParticleLifetime",1.5f);
+			textureParticlesLazer.setFloat("ParticleLifetime",2.0f);
 			textureParticlesLazer.setInt("ParticleTex",0);
 			textureParticlesLazer.setVectorFloat3("Gravity",glm::value_ptr(glm::vec3(0.0f,-0.25f,2.0f)));
-			textureParticlesLazer.setMatrix4("model",1,false,glm::value_ptr(modelMatrixParticlesLazer));
+			textureParticlesLazer.setMatrix4("model",1,false,glm::value_ptr(localPos));
 			glBindVertexArray(VAOParticles);
 			glDrawArrays(GL_POINTS,0,nParticles);
 			glDepthMask(GL_TRUE);
@@ -2012,7 +2046,10 @@ void applicationLoop() {
 		renderAlphaScene(true);
 
 		/*********************Prueba de colisiones****************************/
-		for (std::map<std::string,
+		
+		// Trying without sphere sphere Intersection
+
+		/*for (std::map<std::string,
 			std::tuple<AbstractModel::SBB, glm::mat4, glm::mat4>>::iterator it =
 			collidersSBB.begin(); it != collidersSBB.end(); it++) {
 			bool isCollision = false;
@@ -2021,13 +2058,13 @@ void applicationLoop() {
 				collidersSBB.begin(); jt != collidersSBB.end(); jt++) {
 				if (it != jt && testSphereSphereIntersection(
 					std::get<0>(it->second), std::get<0>(jt->second))) {
-					std::cout << "Hay collision entre " << it->first <<
+					std::cout << "Hay collision con esfera entre " << it->first <<
 						" y el modelo " << jt->first << std::endl;
 					isCollision = true;
 				}
 			}
 			addOrUpdateCollisionDetection(collisionDetection, it->first, isCollision);
-		}
+		}*/
 
 		for (std::map<std::string,
 			std::tuple<AbstractModel::OBB, glm::mat4, glm::mat4>>::iterator it =
@@ -2152,9 +2189,48 @@ void applicationLoop() {
 					}
 			}
 		}
-		
+		HunterMoveFordward++;
+		HunterMoveFordward2++;
+		CarlMoveFordward++;
+		CarlMoveFordwar2++;
+		CarlMoveStep=CarlMoveStep+0.01f;
 		/**********Maquinas de estado*************/
-		
+		switch (Carl2State)
+		{
+			case 0:
+				if (CarlMoveStep > 200){
+					CarlMoveStep = 0;
+					Carl1State = 1;
+					NewCarlDirection2=120.0f;
+				}
+			case 1:
+				if (CarlMoveStep > 200){
+					CarlMoveStep = 0;
+					Carl1State = 2;
+					NewCarlDirection2=240.0f;
+				}
+			break;
+			
+			case 2:
+				if (CarlMoveStep > 200){
+					CarlMoveStep = 0;
+					Carl1State = 0;
+					NewCarlDirection2=360.0f;
+				}
+			break;
+
+			/*case 3:
+				if (CarlMoveStep > 60){
+					CarlMoveStep = 0;
+					Carl1State = 1;
+					modelMatrixCarlBody2 = glm::rotate(modelMatrixCarlBody2, glm::radians(120.0f), glm::vec3(0, 1, 0));
+					CarlModel2Animate.render(modelMatrixCarlBody2);
+				}
+			break;*/
+
+			default:
+			break;
+		}
 		//animationProtagonistIndex = IndexAnimationIdle;
 
 		glfwSwapBuffers(window);
@@ -2224,11 +2300,9 @@ void applicationLoop() {
 				} 
 			}
 		//Hunter
-		HunterMoveFordward++;
-		HunterMoveFordward2++;
+		
 	}
 }
-
 
 int main(int argc, char **argv) {
 	//Conversin de coordenadas GIMP a open GL
@@ -2236,7 +2310,6 @@ int main(int argc, char **argv) {
 		LampPlantPostion[i] = TransformGIMPCoordenatesToOpenGLPixels(LampPlantPostion[i]);
 		LampPlantPostion2[i] = TransformGIMPCoordenatesToOpenGLPixels(LampPlantPostion2[i]);
 	}
-	//std::cout << "Vector: (" << LampPlantPostion[0].x << ", " << LampPlantPostion[0].y << ", " << LampPlantPostion[0].z << ")" << std::endl;
 
 	init(800, 700, "Window GLFW", false);
 	applicationLoop();
