@@ -1426,7 +1426,7 @@ void renderSolidScene(){
 
 	if(!IsEnemy4Death){
 		modelMatrixCarlBody2 = glm::mat4(modelMatrixCarl2); // new variable for scaling
-		modelMatrixCarlBody2 = glm::rotate(modelMatrixCarlBody2, glm::radians(NewCarlDirection2), glm::vec3(0, 1, 0)); // Rotate around Y axis
+		modelMatrixCarlBody2 = glm::rotate(modelMatrixCarlBody2, glm::radians(CarlMoveStep2), glm::vec3(0, 1, 0)); // Rotate around Y axis
 		modelMatrixCarlBody2 = glm::translate(modelMatrixCarlBody2,glm::vec3(0,0,CarlVel2 * CarlMoveFordwar2));
 		modelMatrixCarlBody2[3][1]= terrain.getHeightTerrain(modelMatrixCarlBody2[3][0], modelMatrixCarlBody2[3][2])+ CarlsY_Offset; 
 		CarlModel2Animate.setAnimationIndex(0);
@@ -2193,9 +2193,37 @@ void applicationLoop() {
 		HunterMoveFordward2++;
 		CarlMoveFordward++;
 		CarlMoveFordwar2++;
-		CarlMoveStep=CarlMoveStep+0.01f;
+		CarlMoveStep2+=0.2f;
+		CarlMoveStep+=0.2f;
 		/**********Maquinas de estado*************/
 		switch (Carl2State)
+		{
+			case 0:
+				if (CarlMoveStep2 > 200){
+					CarlMoveStep2 = 0;
+					Carl2State = 1;
+					NewCarlDirection2=120.0f;
+				}
+			case 1:
+				if (CarlMoveStep2 > 200){
+					CarlMoveStep2 = 0;
+					Carl2State = 2;
+					NewCarlDirection2=240.0f;
+				}
+			break;
+			
+			case 2:
+				if (CarlMoveStep2 > 200){
+					CarlMoveStep2 = 0;
+					Carl2State = 0;
+					NewCarlDirection2=360.0f;
+				}
+			break;
+
+			default:
+			break;
+		}
+		switch (Carl1State)
 		{
 			case 0:
 				if (CarlMoveStep > 200){
@@ -2207,7 +2235,7 @@ void applicationLoop() {
 				if (CarlMoveStep > 200){
 					CarlMoveStep = 0;
 					Carl1State = 2;
-					NewCarlDirection2=240.0f;
+					NewCarlDirection=240.0f;
 				}
 			break;
 			
@@ -2215,18 +2243,9 @@ void applicationLoop() {
 				if (CarlMoveStep > 200){
 					CarlMoveStep = 0;
 					Carl1State = 0;
-					NewCarlDirection2=360.0f;
+					NewCarlDirection=360.0f;
 				}
 			break;
-
-			/*case 3:
-				if (CarlMoveStep > 60){
-					CarlMoveStep = 0;
-					Carl1State = 1;
-					modelMatrixCarlBody2 = glm::rotate(modelMatrixCarlBody2, glm::radians(120.0f), glm::vec3(0, 1, 0));
-					CarlModel2Animate.render(modelMatrixCarlBody2);
-				}
-			break;*/
 
 			default:
 			break;
