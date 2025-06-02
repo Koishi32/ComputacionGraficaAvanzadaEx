@@ -144,7 +144,7 @@ int lastMousePosX, offsetX = 0;
 int lastMousePosY, offsetY = 0;
 
 // Model matrix definitions
-glm::mat4 matrixModelRock = glm::mat4(1.0);
+glm::mat4 modelMatrixRock = glm::mat4(1.0);
 glm::mat4 modelMatrixHeli = glm::mat4(1.0f);
 glm::mat4 modelMatrixLambo = glm::mat4(1.0);
 glm::mat4 modelMatrixAircraft = glm::mat4(1.0);
@@ -1349,7 +1349,7 @@ void applicationLoop() {
 	glm::vec3 target;
 	float angleTarget;
 
-	matrixModelRock = glm::translate(matrixModelRock, glm::vec3(-3.0, 0.0, 2.0));
+	modelMatrixRock = glm::translate(modelMatrixRock, glm::vec3(-3.0, 0.0, 2.0));
 
 	modelMatrixHeli = glm::translate(modelMatrixHeli, glm::vec3(5.0, 10.0, -5.0));
 
@@ -1673,12 +1673,12 @@ void applicationLoop() {
 
 		//Collider del la rock
 		AbstractModel::SBB rockCollider;
-		glm::mat4 modelMatrixColliderRock= glm::mat4(matrixModelRock);
+		glm::mat4 modelMatrixColliderRock= glm::mat4(modelMatrixRock);
 		modelMatrixColliderRock = glm::scale(modelMatrixColliderRock, glm::vec3(1.0, 1.0, 1.0));
 		modelMatrixColliderRock = glm::translate(modelMatrixColliderRock, modelRock.getSbb().c);
 		rockCollider.c = glm::vec3(modelMatrixColliderRock[3]);
 		rockCollider.ratio = modelRock.getSbb().ratio * 1.0;
-		addOrUpdateColliders(collidersSBB, "rock", rockCollider, matrixModelRock);
+		addOrUpdateColliders(collidersSBB, "rock", rockCollider, modelMatrixRock);
 
 		// Lamps1 colliders
 		for (int i = 0; i < lamp1Position.size(); i++){
@@ -2120,8 +2120,8 @@ void renderScene(bool renderParticles){
 	 * Custom objects obj
 	 *******************************************/
 	//Rock render
-	matrixModelRock[3][1] = terrain.getHeightTerrain(matrixModelRock[3][0], matrixModelRock[3][2]);
-	modelRock.render(matrixModelRock);
+	modelMatrixRock[3][1] = terrain.getHeightTerrain(modelMatrixRock[3][0], modelMatrixRock[3][2]);
+	modelRock.render(modelMatrixRock);
 	// Forze to enable the unit texture to 0 always ----------------- IMPORTANT
 	glActiveTexture(GL_TEXTURE0);
 

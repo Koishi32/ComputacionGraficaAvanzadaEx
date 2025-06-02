@@ -162,7 +162,7 @@ int lastMousePosX, offsetX = 0;
 static int TOTALSCORE=0;
 const int NEEDEDSCORE=4;
 // Model matrix definitions
-glm::mat4 matrixModelRock = glm::mat4(1.0);
+glm::mat4 modelMatrixRock = glm::mat4(1.0);
 glm::mat4 modelMatrixAircraft = glm::mat4(1.0);
 glm::mat4 modelMatrixAircraftVehicule = glm::mat4(1.0f); 
 glm::mat4 modelMatrixCarl = glm::mat4(1.0f); 
@@ -219,33 +219,33 @@ float GRAVITY = 1.81;
 double tmv = 0;
 double startTimeJump = 0;
 float velProtagonist=12.0f;
+const float JumpDuration=3.0f;
 float angleDegreesToProtagonist=0;
 
-float HunterMoveFordward = 1.0f;
 float hunterVel = 0.01f;
 int HunterAnimationIndex=0;
 
-float HunterMoveFordward2 = 1.0f;
 float hunterVel2 = 0.01f;
 int HunterAnimationIndex2=0;
 
-int Carl1State=0;
-int Carl2State=0;
+bool carlChangeTarget = true; // Flag to indicate if Carl should change target
+bool carlChangeTarget2 = true; // Flag to indicate if Carl2 should change target
+glm::vec3 DirectionCarl1 = glm::vec3(0.0f, 0.0f, 0.0f);
+int CarlAnimationIndex=0;
+const float AllCarlVelocity =0.05;
+float CarlVel = 0;
 
-float CarlMoveFordward = 1.5f;
-float CarlVel = 0.02f;
-
-float CarlMoveFordwar2 = 1.5f;
-float CarlVel2 = 0.02f;
+glm::vec3 DirectionCarl2 = glm::vec3(0.0f, 0.0f, 0.0f);
+int CarlAnimationIndex2=0;
+float CarlVel2 = 0;
 
 const float CarlsY_Offset = 0.12f;
-
-float NewCarlDirection2=0.0f;
-float CarlMoveStep2=0.0f;
-
-float NewCarlDirection=0.0f;
-float CarlMoveStep=0.0f;
-
+glm::vec3 TargetPositions[3]={
+	glm::vec3(0.0f, 0.0f, 0.0f), // Protagonist position
+	glm::vec3(0.0f, 0.0f, 0.0f), // Carl1 position
+	glm::vec3(0.0f, 0.0f, 0.0f)  // Carl2 position
+};
+glm::vec3 playerPosition = glm::vec3(0.0f, 0.0f, 0.0f);
 float rotNave=0.0f; 
 float currentNaveHeight=0.0f,NaveStep=0.02f; 
 const float LimitNaveHeight=4.0f; 
@@ -267,9 +267,9 @@ bool IsAlive=true;
 int lastMousePosY, offsetY = 0;
 
 bool IsEnemy1Death=false; // Hunter 1
-bool IsEnemy2Death=false; // Hunter 2
+bool IsEnemy2Death=false; // Carl 1
 bool IsEnemy3Death=false; // Hunter 3
-bool IsEnemy4Death=false; // Hunter 4
+bool IsEnemy4Death=false; // Carl 2
 
 // Colliders
 std::map<std::string, std::tuple<AbstractModel::OBB, glm::mat4, glm::mat4> > collidersOBB;
@@ -311,12 +311,9 @@ GLuint VAOParticles;
 GLuint nParticles = 25;
 double currTimeParticlesAnimation, lastTimeParticlesAnimation;
 
-//!!!!!!!!!!
+//Matrices for new models !!!!!!!!!!
 glm::mat4 modelMatrixAircraftBlend;
-glm::mat4 modelMatrixCarlBody;
-glm::mat4 modelMatrixHunterBody;
-glm::mat4 modelMatrixCarlBody2;
-glm::mat4 modelMatrixHunterBody2;
+
 
 // Se definen todos las funciones.
 void reshapeCallback(GLFWwindow *Window, int widthRes, int heightRes);
@@ -1231,10 +1228,7 @@ void RenderTextVidas(){
 	}
 }
 void renderSolidScene(){
-	/*******************************************
-	 * Terrain Cesped
-	 *******************************************/
-	// Se activa la textura del agua
+
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, textureCraterMartsID);
 	shaderTerrain.setInt("backgroundTexture", 0);
@@ -1260,8 +1254,8 @@ void renderSolidScene(){
 	 * Custom objects obj
 	 *******************************************/
 	//Rock render
-	matrixModelRock[3][1] = terrain.getHeightTerrain(matrixModelRock[3][0], matrixModelRock[3][2]);
-	modelRock.render(matrixModelRock);
+	modelMatrixRock[3][1] = terrain.getHeightTerrain(modelMatrixRock[3][0], modelMatrixRock[3][2]);
+	modelRock.render(modelMatrixRock);
 
 
 	// Forze to enable the unit texture to 0 always ----------------- IMPORTANT
@@ -1305,11 +1299,18 @@ void renderSolidScene(){
 	ProtagonistModelAnimate.render(modelMatrixProtaBody);
 	//animationProtagonistIndex=IndexAnimationIdle;
 
+	//Position Target
+
+		TargetPositions[0] = modelMatrixProtagonist[3];
+		TargetPositions[1] = modelMatrixRock[3];
+		TargetPositions[2] = LampPlantPostion[3];
+		playerPosition = modelMatrixProtaBody[3];
+
 	//HUNTER 1 BEHAVIOUR
 
 	if(!IsEnemy1Death){
 			// Get positions of the player and hunter
-		glm::vec3 playerPosition = glm::vec3(modelMatrixProtaBody[3]);  // Player's position
+		//glm::vec3 playerPosition = glm::vec3(modelMatrixProtaBody[3]);  // Player's position
 		glm::vec3 hunterPosition = glm::vec3(modelMatrixHunter[3]);     // Hunter's position
 
 		// Step 1: Calculate direction to the player
@@ -1360,7 +1361,7 @@ void renderSolidScene(){
 
 	if(!IsEnemy3Death){
 			// Get positions of the player and hunter
-		glm::vec3 playerPosition = glm::vec3(modelMatrixProtaBody[3]);  // Player's position
+		//glm::vec3 playerPosition = glm::vec3(modelMatrixProtaBody[3]);  // Player's position
 		glm::vec3 hunterPosition = glm::vec3(modelMatrixHunter2[3]);     // Hunter's position
 
 		// Step 1: Calculate direction to the player
@@ -1408,35 +1409,125 @@ void renderSolidScene(){
 	}
 
 	//CARL 1 BEHAVIOUR
-
 	if(!IsEnemy2Death){
-		
-		modelMatrixCarlBody = glm::mat4(modelMatrixCarl); // new variable for scaling
-		modelMatrixCarlBody = glm::translate(modelMatrixCarlBody,glm::vec3(0,0,CarlVel * -CarlMoveFordward));
-		modelMatrixCarlBody[3][1]= terrain.getHeightTerrain(modelMatrixCarlBody[3][0], modelMatrixCarlBody[3][2]) + CarlsY_Offset;
-		CarlModelAnimate.setAnimationIndex(0);
-		CarlModelAnimate.render(modelMatrixCarlBody);
-	}else{ // IF THE ROBOT DIES DO THE FOLLOWING
-		modelMatrixCarlBody[3][1]= terrain.getHeightTerrain(modelMatrixCarlBody[3][0], modelMatrixCarlBody[3][2]) + CarlsY_Offset; 
-		CarlModelAnimate.setAnimationIndex(1);
-		CarlModelAnimate.render(modelMatrixCarlBody);
+		// Every X seconds , Carl will change target
+		glm::vec3 TargetPosition;
+		if(carlChangeTarget){
+			// Randomly select a target position from the list of targets
+			int randomIndex = rand() % 3;			
+			TargetPosition = TargetPositions[randomIndex];
+			carlChangeTarget = false;
+			CarlVel=AllCarlVelocity;
+		}
+		glm::vec3 MyCarlPosition = glm::vec3(modelMatrixCarl[3]);
+
+		// Step 1: Calculate direction to the player
+		glm::vec3 directionToObjetive = glm::normalize(glm::vec3(TargetPosition.x - MyCarlPosition.x, 
+														0.0f, 
+														TargetPosition.z - MyCarlPosition.z));
+		//step 1.5 calculate distance to stop player from coming to close
+		float distanceToPlayer  = glm::distance(playerPosition,MyCarlPosition);
+		float distanceToTarget = glm::distance(TargetPosition,MyCarlPosition);
+		if(distanceToPlayer > 2.0f || distanceToTarget > 0.4f){
+			// If the player is far away or the target is far away, Carl will walk towards the target
+			CarlAnimationIndex= 0; // Animation for walking
+			CarlVel=AllCarlVelocity;
+		} else if (distanceToPlayer <= 2.0f){
+			CarlAnimationIndex= 1; // Animation for atack still
+			CarlVel=0;
+			if(!playerHasbeenAttacked){
+				playerHasbeenAttacked=true;
+				inmobile=true;
+				animationProtagonistIndex= IndexAnimationRecibeHit;
+				VidasJugador--;
+			}					
+		}else if (distanceToTarget <= 0.4f){
+			// If Carl is close to the target, he will stop
+			CarlAnimationIndex= 1; // Animation for standing still
+			CarlVel=0;
+			carlChangeTarget = true; // Reset target change flag		
+		}
+
+		float moveSpeed = CarlVel;
+		MyCarlPosition += directionToObjetive * moveSpeed; // update position
+
+		// Build model matrix from updated position
+		glm::quat rotationQuaternion = glm::rotation(glm::vec3(0.0f, 0.0f, -1.0f), directionToObjetive);
+		glm::mat4 rotationMatrix = glm::toMat4(rotationQuaternion);
+		modelMatrixCarl = glm::mat4(1.0f);
+		modelMatrixCarl = glm::translate(modelMatrixCarl, MyCarlPosition);
+		modelMatrixCarl *= rotationMatrix;
+		// Render the carl
+		modelMatrixCarl[3][1]= terrain.getHeightTerrain(modelMatrixCarl[3][0], modelMatrixCarl[3][2]); 
+		CarlModelAnimate.setAnimationIndex(CarlAnimationIndex);
+		CarlModelAnimate.render(modelMatrixCarl);
+
+	}else{
+		CarlVel=0;
+		modelMatrixCarl[3][1]= terrain.getHeightTerrain(modelMatrixCarl[3][0], modelMatrixCarl[3][2]); 
+		CarlModelAnimate.setAnimationIndex(CarlAnimationIndex); 
+		CarlModelAnimate.render(modelMatrixCarl);
 	}
+
 
 	//CARL 2 BEHAVIOUR
-
 	if(!IsEnemy4Death){
-		modelMatrixCarlBody2 = glm::mat4(modelMatrixCarl2); // new variable for scaling
-		modelMatrixCarlBody2 = glm::rotate(modelMatrixCarlBody2, glm::radians(CarlMoveStep2), glm::vec3(0, 1, 0)); // Rotate around Y axis
-		modelMatrixCarlBody2 = glm::translate(modelMatrixCarlBody2,glm::vec3(0,0,CarlVel2 * CarlMoveFordwar2));
-		modelMatrixCarlBody2[3][1]= terrain.getHeightTerrain(modelMatrixCarlBody2[3][0], modelMatrixCarlBody2[3][2])+ CarlsY_Offset; 
-		CarlModel2Animate.setAnimationIndex(0);
-		CarlModel2Animate.render(modelMatrixCarlBody2);
-	}else{ // DO IF IT DIES
-		modelMatrixCarlBody2[3][1]= terrain.getHeightTerrain(modelMatrixCarlBody2[3][0], modelMatrixCarlBody2[3][2]) + CarlsY_Offset;
-		CarlModel2Animate.setAnimationIndex(1);
-		CarlModel2Animate.render(modelMatrixCarlBody2);
-	}
+		// Every X seconds , Carl will change target
+		glm::vec3 TargetPosition;
+		if(carlChangeTarget2){
+			// Randomly select a target position from the list of targets
+			int randomIndex = rand() % 3;			
+			TargetPosition = TargetPositions[randomIndex];
+			carlChangeTarget2 = false;
+			CarlVel2=AllCarlVelocity;
+		}
+		glm::vec3 MyCarlPosition2 = glm::vec3(modelMatrixCarl2[3]);
 
+		// Step 1: Calculate direction to the player
+		glm::vec3 directionToObjetive = glm::normalize(glm::vec3(TargetPosition.x - MyCarlPosition2.x, 
+														0.0f, 
+														TargetPosition.z - MyCarlPosition2.z));
+		//step 1.5 calculate distance to stop player from coming to close
+		float distanceToPlayer  = glm::distance(playerPosition,MyCarlPosition2);
+		float distanceToTarget = glm::distance(TargetPosition,MyCarlPosition2);
+		if(distanceToPlayer > 2.0f || distanceToTarget > 0.4f){
+			// If the player is far away or the target is far away, Carl will walk towards the target
+			CarlAnimationIndex2= 0; // Animation for walking
+			CarlVel2=AllCarlVelocity;
+		} else if (distanceToPlayer <= 2.0f){
+			CarlAnimationIndex2= 1; // Animation for atack still
+			CarlVel2=0;
+			if(!playerHasbeenAttacked){
+				playerHasbeenAttacked=true;
+				inmobile=true;
+				animationProtagonistIndex= IndexAnimationRecibeHit;
+				VidasJugador--;
+			}					
+		}else if (distanceToTarget <= 0.4f){
+			// If Carl is close to the target, he will stop
+			CarlAnimationIndex2= 1; // Animation for standing still
+			CarlVel2=0;
+			carlChangeTarget2 = true; // Reset target change flag		
+		}
+		float moveSpeed = CarlVel2;
+		MyCarlPosition2 += directionToObjetive * moveSpeed; // update position
+
+		// Build model matrix from updated position
+		glm::quat rotationQuaternion = glm::rotation(glm::vec3(0.0f, 0.0f, -1.0f), directionToObjetive);
+		glm::mat4 rotationMatrix = glm::toMat4(rotationQuaternion);
+		modelMatrixCarl2 = glm::mat4(1.0f);
+		modelMatrixCarl2 = glm::translate(modelMatrixCarl2, MyCarlPosition2);
+		modelMatrixCarl2 *= rotationMatrix;
+		// Render the carl
+		modelMatrixCarl2[3][1]= terrain.getHeightTerrain(modelMatrixCarl2[3][0], modelMatrixCarl2[3][2]); 
+		CarlModel2Animate.setAnimationIndex(CarlAnimationIndex2);
+		CarlModel2Animate.render(modelMatrixCarl2);
+	}else{
+		CarlVel2=0;
+		modelMatrixCarl2[3][1]= terrain.getHeightTerrain(modelMatrixCarl2[3][0], modelMatrixCarl2[3][2]); 
+		CarlModel2Animate.setAnimationIndex(CarlAnimationIndex2); 
+		CarlModel2Animate.render(modelMatrixCarl2);
+	}
 
 	modelMatrixmodelAircraftVehiculeBody = glm::mat4(modelMatrixAircraft); 
 	modelMatrixmodelAircraftVehiculeBody[3][1]= terrain.getHeightTerrain(modelMatrixmodelAircraftVehiculeBody[3][0], modelMatrixmodelAircraftVehiculeBody[3][2]) +1.8f+ currentNaveHeight; 
@@ -1557,7 +1648,23 @@ float currentTime=0;
 float elapsedTime=0;
 float currentTime2=0;
 float elapsedTime2=0;
+float currentTime3=0;
+float elapsedTime3=0;
+
 void WaitTime() { // For variables that requiere time passage
+	// For Measuring Carl animation
+	/*if(carlChangeTarget){
+		carlCurrentTime = deltaTime;
+		carlElapsedTime = carlCurrentTime + carlElapsedTime;
+		if(carlElapsedTime >= Carl_timeLimit) {
+			carlChangeTarget = false;
+			carlElapsedTime = 0;
+			CarlAnimationIndex=0; // Reset to idle animation
+		} else {
+			float progress = carlElapsedTime / Carl_timeLimit;
+		}
+	}*/
+	// For measuring Shooting animation
     if (animationRuningShootingRunning) {
         currentTime = deltaTime;
         elapsedTime = currentTime + elapsedTime;
@@ -1573,6 +1680,9 @@ void WaitTime() { // For variables that requiere time passage
             float progress = elapsedTime / animationDuration;
         }
     }
+
+	// For measuring player inmunity after being attacked
+	
 	if (playerHasbeenAttacked && animationProtagonistIndex !=IndexFinalDeath ) {
 		RenderTextVidas();
         currentTime2 = deltaTime;
@@ -1602,6 +1712,18 @@ void WaitTime() { // For variables that requiere time passage
 
         }
     }
+	// For measuring jump animation
+	if (isJump) {
+		currentTime3 = deltaTime;
+		elapsedTime3 = currentTime3 + elapsedTime3;
+		if (elapsedTime3 >= JumpDuration) {
+			isJump = false;
+			tmv = 0;
+			startTimeJump = 0;
+			currentTime3=0;
+			elapsedTime3=0;
+		}
+	}
 }
 glm::vec3 CoordanatesGimpTemp = glm::vec3(0);
 
@@ -1609,7 +1731,7 @@ void TransformForObjects(){
 
 	CoordanatesGimpTemp = glm::vec3(250,0,300);
 	CoordanatesGimpTemp = TransformGIMPCoordenatesToOpenGLPixels(CoordanatesGimpTemp);
-	matrixModelRock = glm::translate(matrixModelRock, glm::vec3(CoordanatesGimpTemp));
+	modelMatrixRock = glm::translate(modelMatrixRock, glm::vec3(CoordanatesGimpTemp));
 
 	CoordanatesGimpTemp = glm::vec3(233,0,376);
 	CoordanatesGimpTemp = TransformGIMPCoordenatesToOpenGLPixels(CoordanatesGimpTemp);
@@ -1626,7 +1748,7 @@ void TransformForObjects(){
 	CoordanatesGimpTemp = TransformGIMPCoordenatesToOpenGLPixels(CoordanatesGimpTemp);
 	modelMatrixCarl2 = glm::translate(modelMatrixCarl2,CoordanatesGimpTemp);
 
-	glm::vec3 CoordanatesGimpTemp = glm::vec3(226,0,334);
+	CoordanatesGimpTemp = glm::vec3(226,0,334);
 	CoordanatesGimpTemp = TransformGIMPCoordenatesToOpenGLPixels(CoordanatesGimpTemp);
 	modelMatrixHunter = glm::translate(modelMatrixHunter,CoordanatesGimpTemp);
 
@@ -1658,6 +1780,8 @@ void applicationLoop() {
 	glm::vec3 lightPos = glm::vec3(10.0, 10.0, -10.0);
 
 	shadowBox = new ShadowBox(-lightPos, camera.get(), 30.0f, 0.1f, 45.0f);
+
+	// Set carl target positions
 
 	while (psi) {
 		currTime = TimeManager::Instance().GetTime();
@@ -1898,33 +2022,33 @@ void applicationLoop() {
 
 		//Collider Carl
 
-		glm::mat4 modelMatrixColliderCarl = glm::mat4(modelMatrixCarlBody2);
+		glm::mat4 modelMatrixColliderCarl = glm::mat4(modelMatrixCarl);
 		AbstractModel::OBB CarlCollider;
 		// Set the orientation of collider before doing the scale
 		CarlCollider.u = glm::quat_cast(modelMatrixCarl);
 		modelMatrixColliderCarl = glm::scale(modelMatrixColliderCarl,glm::vec3(1.0,8.0,1.0f));
-		modelMatrixColliderCarl = glm::translate(modelMatrixCarlBody,
+		modelMatrixColliderCarl = glm::translate(modelMatrixColliderCarl,
 		glm::vec3(CarlModelAnimate.getObb().c.x,
 				CarlModelAnimate.getObb().c.y,
 				CarlModelAnimate.getObb().c.z));
 		CarlCollider.c = glm::vec3(modelMatrixColliderCarl[3] + glm::vec4(0,1.25,0,0.0));
 		CarlCollider.e = CarlModelAnimate.getObb().e * glm::vec3(1.0,8.0,1.0f) * glm::vec3(0.787401574, 0.787401574, 0.787401574);
-		addOrUpdateColliders(collidersOBB, "Carl1", CarlCollider, modelMatrixCarlBody);
+		addOrUpdateColliders(collidersOBB, "Carl1", CarlCollider, modelMatrixCarl);
 
 		//Collider carl 2
 
-		glm::mat4 modelMatrixColliderCarl2 = glm::mat4(modelMatrixCarlBody2);
+		glm::mat4 modelMatrixColliderCarl2 = glm::mat4(modelMatrixCarl2);
 		AbstractModel::OBB CarlCollider2;
 		// Set the orientation of collider before doing the scale
 		CarlCollider2.u = glm::quat_cast(modelMatrixCarl2);
 		modelMatrixColliderCarl2 = glm::scale(modelMatrixColliderCarl2,glm::vec3(1.0,8.0,1.0f));
-		modelMatrixColliderCarl2 = glm::translate(modelMatrixCarlBody2,
+		modelMatrixColliderCarl2 = glm::translate(modelMatrixColliderCarl2,
 		glm::vec3(CarlModel2Animate.getObb().c.x,
 				CarlModel2Animate.getObb().c.y,
 				CarlModel2Animate.getObb().c.z));
 		CarlCollider2.c = glm::vec3(modelMatrixColliderCarl2[3] + glm::vec4(0,1.25,0,0.0));
 		CarlCollider2.e = CarlModel2Animate.getObb().e * glm::vec3(1.0,8.0,1.0f) * glm::vec3(0.787401574, 0.787401574, 0.787401574);
-		addOrUpdateColliders(collidersOBB, "Carl2", CarlCollider2, modelMatrixCarlBody2);
+		addOrUpdateColliders(collidersOBB, "Carl2", CarlCollider2, modelMatrixCarl2);
 
 
 		//Collider Hunter
@@ -1959,16 +2083,12 @@ void applicationLoop() {
 
 		//Collider del la rock
 		AbstractModel::SBB rockCollider;
-		glm::mat4 modelMatrixColliderRock= glm::mat4(matrixModelRock);
+		glm::mat4 modelMatrixColliderRock= glm::mat4(modelMatrixRock);
 		modelMatrixColliderRock = glm::scale(modelMatrixColliderRock, glm::vec3(1.0, 1.0, 1.0));
 		modelMatrixColliderRock = glm::translate(modelMatrixColliderRock, modelRock.getSbb().c);
 		rockCollider.c = glm::vec3(modelMatrixColliderRock[3]);
 		rockCollider.ratio = modelRock.getSbb().ratio * 1.0;
-		addOrUpdateColliders(collidersSBB, "rock", rockCollider, matrixModelRock);
-
-		//Colliders for hunters
-		//Colliders for carls
-
+		addOrUpdateColliders(collidersSBB, "rock", rockCollider, modelMatrixRock);
 		// Lamps1 colliders
 		for (int i = 0; i < LampPlantPostion.size(); i++){
 			AbstractModel::OBB lampCollider;
@@ -2049,7 +2169,7 @@ void applicationLoop() {
 		
 		// Trying without sphere sphere Intersection
 
-		/*for (std::map<std::string,
+		for (std::map<std::string,
 			std::tuple<AbstractModel::SBB, glm::mat4, glm::mat4>>::iterator it =
 			collidersSBB.begin(); it != collidersSBB.end(); it++) {
 			bool isCollision = false;
@@ -2064,7 +2184,7 @@ void applicationLoop() {
 				}
 			}
 			addOrUpdateCollisionDetection(collisionDetection, it->first, isCollision);
-		}*/
+		}
 
 		for (std::map<std::string,
 			std::tuple<AbstractModel::OBB, glm::mat4, glm::mat4>>::iterator it =
@@ -2101,8 +2221,7 @@ void applicationLoop() {
 		}
 
 		std::map<std::string, bool>::iterator itCollision;
-		for (itCollision = collisionDetection.begin(); 
-			itCollision != collisionDetection.end(); itCollision++) {
+		for (itCollision = collisionDetection.begin(); itCollision != collisionDetection.end(); itCollision++) {
 			std::map<std::string, std::tuple<AbstractModel::SBB, 
 				glm::mat4, glm::mat4>>::iterator sbbBuscado = 
 				collidersSBB.find(itCollision->first);
@@ -2125,7 +2244,14 @@ void applicationLoop() {
 					if (itCollision->first.compare("Hunter2") == 0){
 						modelMatrixHunter2 = std::get<1>(obbBuscado->second);
 					}
-
+					if (itCollision->first.compare("Carl1") == 0){
+						modelMatrixCarl = std::get<1>(obbBuscado->second);
+						//CarlVel=0;
+					}
+					if (itCollision->first.compare("Carl2") == 0){
+						modelMatrixCarl2 = std::get<1>(obbBuscado->second);
+						//CarlVel2=0;
+					}
 				}
 			}
 		}
@@ -2189,68 +2315,8 @@ void applicationLoop() {
 					}
 			}
 		}
-		HunterMoveFordward++;
-		HunterMoveFordward2++;
-		CarlMoveFordward++;
-		CarlMoveFordwar2++;
-		CarlMoveStep2+=0.2f;
-		CarlMoveStep+=0.2f;
+
 		/**********Maquinas de estado*************/
-		switch (Carl2State)
-		{
-			case 0:
-				if (CarlMoveStep2 > 200){
-					CarlMoveStep2 = 0;
-					Carl2State = 1;
-					NewCarlDirection2=120.0f;
-				}
-			case 1:
-				if (CarlMoveStep2 > 200){
-					CarlMoveStep2 = 0;
-					Carl2State = 2;
-					NewCarlDirection2=240.0f;
-				}
-			break;
-			
-			case 2:
-				if (CarlMoveStep2 > 200){
-					CarlMoveStep2 = 0;
-					Carl2State = 0;
-					NewCarlDirection2=360.0f;
-				}
-			break;
-
-			default:
-			break;
-		}
-		switch (Carl1State)
-		{
-			case 0:
-				if (CarlMoveStep > 200){
-					CarlMoveStep = 0;
-					Carl1State = 1;
-					NewCarlDirection2=120.0f;
-				}
-			case 1:
-				if (CarlMoveStep > 200){
-					CarlMoveStep = 0;
-					Carl1State = 2;
-					NewCarlDirection=240.0f;
-				}
-			break;
-			
-			case 2:
-				if (CarlMoveStep > 200){
-					CarlMoveStep = 0;
-					Carl1State = 0;
-					NewCarlDirection=360.0f;
-				}
-			break;
-
-			default:
-			break;
-		}
-		//animationProtagonistIndex = IndexAnimationIdle;
 
 		glfwSwapBuffers(window);
 
