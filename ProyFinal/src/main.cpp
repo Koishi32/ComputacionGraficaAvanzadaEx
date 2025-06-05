@@ -230,20 +230,24 @@ int HunterAnimationIndex2=0;
 
 bool carlChangeTarget = true; // Flag to indicate if Carl should change target
 bool carlChangeTarget2 = true; // Flag to indicate if Carl2 should change target
+
 glm::vec3 DirectionCarl1 = glm::vec3(0.0f, 0.0f, 0.0f);
 int CarlAnimationIndex=0;
-const float AllCarlVelocity =0.05;
 float CarlVel = 0;
+glm::vec3 Carl1TargetPosition = glm::vec3(0.0f, 0.0f, 0.0f);
 
 glm::vec3 DirectionCarl2 = glm::vec3(0.0f, 0.0f, 0.0f);
 int CarlAnimationIndex2=0;
 float CarlVel2 = 0;
+glm::vec3 Carl2TargetPosition = glm::vec3(0.0f, 0.0f, 0.0f);
 
+const float AllCarlVelocity =0.05;
 const float CarlsY_Offset = 0.12f;
-glm::vec3 TargetPositions[3]={
-	glm::vec3(0.0f, 0.0f, 0.0f),
-	glm::vec3(0.0f, 0.0f, 0.0f),
-	glm::vec3(0.0f, 0.0f, 0.0f)
+
+glm::mat4 ModelTargetTransforms[3]={
+	glm::mat4(1.0f), //First Target
+	glm::mat4(1.0f), //Second Target
+	glm::mat4(1.0f) //Third Target
 };
 glm::vec3 playerPosition = glm::vec3(0.0f, 0.0f, 0.0f);
 float rotNave=0.0f; 
@@ -1403,48 +1407,39 @@ void renderSolidScene(){
 		HunterModel2Animate.render(modelMatrixHunter2);
 	}
 
-	//Position Target For carl
-	glm::vec3 CoordanatesGimpTemp;
-	CoordanatesGimpTemp = glm::vec3(50,0,100);
-	CoordanatesGimpTemp = TransformGIMPCoordenatesToOpenGLPixels(CoordanatesGimpTemp);
-	TargetPositions[0] = CoordanatesGimpTemp;
-
-	CoordanatesGimpTemp = glm::vec3(125,0,150);
-	CoordanatesGimpTemp = TransformGIMPCoordenatesToOpenGLPixels(CoordanatesGimpTemp);
-	TargetPositions[1] = CoordanatesGimpTemp;
-	
-	CoordanatesGimpTemp = glm::vec3(0,0,-50);
-	CoordanatesGimpTemp = TransformGIMPCoordenatesToOpenGLPixels(CoordanatesGimpTemp);
-	TargetPositions[2] = CoordanatesGimpTemp;
-
 	//CARL 1 BEHAVIOUR
 	if(!IsEnemy2Death){
 		// Every X seconds , Carl will change target
 		srand(time(0));
-		glm::vec3 TargetPosition;
+		
 		if(carlChangeTarget){
 			// Randomly select a target position from the list of targets
-			int randomIndex = rand() % 3;			
-			TargetPosition = TargetPositions[randomIndex];
+			int randomIndex = rand() % ModelTargetTransforms->length();			
+			Carl1TargetPosition = glm::vec3(ModelTargetTransforms[randomIndex][3]);
 			CarlVel=AllCarlVelocity;
 			carlChangeTarget = false;
 			//TargetPosition = TargetPositions[2]; // Fixed target position for Carl 1
 		}
 		glm::vec3 MyCarlPosition = glm::vec3(modelMatrixCarl[3]);
-
+		
+		std::cout << "Target: " << Carl1TargetPosition.x <<","<< Carl1TargetPosition.y<<","<<Carl1TargetPosition.z<< std::endl;
+		
 		// Step 1: Calculate direction to the player
-		glm::vec3 directionToObjetive = glm::normalize(glm::vec3(TargetPosition.x - MyCarlPosition.x, 
+		glm::vec3 directionToObjetive = glm::normalize(glm::vec3(Carl1TargetPosition.x - MyCarlPosition.x, 
 														0.0f, 
-														TargetPosition.z - MyCarlPosition.z));
+														Carl1TargetPosition.z - MyCarlPosition.z));
 		//step 1.5 calculate distance to stop player from coming to close
 		float distanceToPlayer  = glm::distance(playerPosition,MyCarlPosition);
-		float distanceToTarget = glm::distance(TargetPosition,MyCarlPosition);
-		if(distanceToPlayer > 2.0f || distanceToTarget > 0.4f){
+		glm::vec3 target=  glm::vec3(Carl1TargetPosition.x,Carl1TargetPosition.y,Carl1TargetPosition.z);
+		float distanceToTarget = glm::distance(target,MyCarlPosition);
+		std::cout << " Carl 1 Distance to player: " << distanceToPlayer << std::endl;
+		std::cout << "Carl 1 Distance to target: " << distanceToTarget << std::endl;
+		if(distanceToPlayer > 0.9f || distanceToTarget > 0.5f){
 			// If the player is far away or the target is far away, Carl will walk towards the target
-			CarlAnimationIndex= 0; // Animation for walking
+			CarlAnimationIndex= 1; // Animation for walking
 			CarlVel=AllCarlVelocity;
-		} else if (distanceToPlayer <= 2.5f){
-			CarlAnimationIndex= 1; // Animation for atack 
+		} else if (distanceToPlayer <= 0.9f){
+			CarlAnimationIndex= 0; // Animation for atack 
 			CarlVel=0;
 			if(!playerHasbeenAttacked){
 				playerHasbeenAttacked=true;
@@ -1452,10 +1447,9 @@ void renderSolidScene(){
 				animationProtagonistIndex= IndexAnimationRecibeHit;
 				VidasJugador--;
 			}					
-		}else if (distanceToTarget <= 1.0f){
+		}else if (distanceToTarget <=0.5f){
 			// If Carl is close to the target, he will stop
-			CarlAnimationIndex= 1; // Animation for standing still
-			CarlVel=0;
+			CarlAnimationIndex= 0; // Animation for standing still
 			carlChangeTarget = true; // Reset target change flag		
 		}
 
@@ -1482,7 +1476,7 @@ void renderSolidScene(){
 	}else{
 		CarlVel=0;
 		modelMatrixCarl[3][1]= terrain.getHeightTerrain(modelMatrixCarl[3][0], modelMatrixCarl[3][2])+CarlsY_Offset; 
-		CarlModelAnimate.setAnimationIndex(CarlAnimationIndex); 
+		CarlModelAnimate.setAnimationIndex(1); 
 		CarlModelAnimate.render(modelMatrixCarl);
 	}
 
@@ -1490,30 +1484,32 @@ void renderSolidScene(){
 	//CARL 2 BEHAVIOUR
 	if(!IsEnemy4Death){
 		// Every X seconds , Carl will change target
-		glm::vec3 TargetPosition;
 		if(carlChangeTarget2){
 			// Randomly select a target position from the list of targets
 			srand(time(0));
-			int randomIndex = rand() % 3;			
-			TargetPosition = TargetPositions[randomIndex];
+			int randomIndex = rand() % ModelTargetTransforms->length();			
+			Carl2TargetPosition = glm::vec3(ModelTargetTransforms[randomIndex][3]);
 			carlChangeTarget2 = false;
 			CarlVel2=AllCarlVelocity;
 		}
 		glm::vec3 MyCarlPosition2 = glm::vec3(modelMatrixCarl2[3]);
-
+		
 		// Step 1: Calculate direction to the player
-		glm::vec3 directionToObjetive = glm::normalize(glm::vec3(TargetPosition.x - MyCarlPosition2.x, 
+		glm::vec3 directionToObjetive = glm::normalize(glm::vec3(Carl2TargetPosition.x - MyCarlPosition2.x, 
 														0.0f, 
-														TargetPosition.z - MyCarlPosition2.z));
+														Carl2TargetPosition.z - MyCarlPosition2.z));
 		//step 1.5 calculate distance to stop player from coming to close
 		float distanceToPlayer  = glm::distance(playerPosition,MyCarlPosition2);
-		float distanceToTarget = glm::distance(TargetPosition,MyCarlPosition2);
-		if(distanceToPlayer > 2.0f || distanceToTarget > 0.4f){
+		glm::vec3 target=  glm::vec3(Carl2TargetPosition.x,Carl2TargetPosition.y,Carl2TargetPosition.z);
+		float distanceToTarget = glm::distance(target,MyCarlPosition2);
+		std::cout << " Carl 2 Distance to player: " << distanceToPlayer << std::endl;
+		std::cout << "Carl 2 Distance to target: " << distanceToTarget << std::endl;
+		if(distanceToPlayer > 0.9f || distanceToTarget > 0.5f){
 			// If the player is far away or the target is far away, Carl will walk towards the target
-			CarlAnimationIndex2= 0; // Animation for walking
+			CarlAnimationIndex2= 1; // Animation for walking
 			CarlVel2=AllCarlVelocity;
-		} else if (distanceToPlayer <= 2.5f){
-			CarlAnimationIndex2= 1; // Animation for atack still
+		} else if (distanceToPlayer <= 0.9f){
+			CarlAnimationIndex2= 0; // Animation for atack still
 			CarlVel2=0;
 			if(!playerHasbeenAttacked){
 				playerHasbeenAttacked=true;
@@ -1521,10 +1517,9 @@ void renderSolidScene(){
 				animationProtagonistIndex= IndexAnimationRecibeHit;
 				VidasJugador--;
 			}					
-		}else if (distanceToTarget <= 1.0f){
+		}else if (distanceToTarget <= 0.5f){
 			// If Carl is close to the target, he will stop
-			CarlAnimationIndex2= 1; // Animation for standing still
-			CarlVel2=0;
+			CarlAnimationIndex2= 0; // Animation for standing still
 			carlChangeTarget2 = true; // Reset target change flag		
 		}
 		
@@ -1546,7 +1541,7 @@ void renderSolidScene(){
 	}else{
 		CarlVel2=0;
 		modelMatrixCarl2[3][1]= terrain.getHeightTerrain(modelMatrixCarl2[3][0], modelMatrixCarl2[3][2])+CarlsY_Offset;
-		CarlModel2Animate.setAnimationIndex(CarlAnimationIndex2); 
+		CarlModel2Animate.setAnimationIndex(1); 
 		CarlModel2Animate.render(modelMatrixCarl2);
 	}
 
@@ -1750,6 +1745,18 @@ glm::vec3 CoordanatesGimpTemp = glm::vec3(0);
 
 void TransformForObjects(){
 
+	CoordanatesGimpTemp = glm::vec3(210,0,178);
+	CoordanatesGimpTemp = TransformGIMPCoordenatesToOpenGLPixels(CoordanatesGimpTemp);
+	ModelTargetTransforms[0] = glm::translate(ModelTargetTransforms[0], CoordanatesGimpTemp);
+
+	CoordanatesGimpTemp = glm::vec3(164,0,327);
+	CoordanatesGimpTemp = TransformGIMPCoordenatesToOpenGLPixels(CoordanatesGimpTemp);
+	ModelTargetTransforms[1] = glm::translate(ModelTargetTransforms[1], CoordanatesGimpTemp);
+	
+	CoordanatesGimpTemp = glm::vec3(340,0,259);
+	CoordanatesGimpTemp = TransformGIMPCoordenatesToOpenGLPixels(CoordanatesGimpTemp);
+	ModelTargetTransforms[2] = glm::translate(ModelTargetTransforms[2], CoordanatesGimpTemp);
+
 	CoordanatesGimpTemp = glm::vec3(250,0,300);
 	CoordanatesGimpTemp = TransformGIMPCoordenatesToOpenGLPixels(CoordanatesGimpTemp);
 	modelMatrixRock = glm::translate(modelMatrixRock, glm::vec3(CoordanatesGimpTemp));
@@ -1761,11 +1768,11 @@ void TransformForObjects(){
 
 	//New models hunter and carl positions 
 	
-	CoordanatesGimpTemp = glm::vec3(150,0,230);
+	CoordanatesGimpTemp = glm::vec3(229,0,218);
 	CoordanatesGimpTemp = TransformGIMPCoordenatesToOpenGLPixels(CoordanatesGimpTemp);
 	modelMatrixCarl = glm::translate(modelMatrixCarl,CoordanatesGimpTemp);
 
-	CoordanatesGimpTemp = glm::vec3(260,0,150);
+	CoordanatesGimpTemp = glm::vec3(260,0,230);
 	CoordanatesGimpTemp = TransformGIMPCoordenatesToOpenGLPixels(CoordanatesGimpTemp);
 	modelMatrixCarl2 = glm::translate(modelMatrixCarl2,CoordanatesGimpTemp);
 
@@ -1811,7 +1818,7 @@ void applicationLoop() {
 			continue;
 		}
 		lastTime = currTime;
-		TimeManager::Instance().CalculateFrameRate(true);
+		TimeManager::Instance().CalculateFrameRate(false); // Set to true to show FPS
 		deltaTime = TimeManager::Instance().DeltaTime;
 		WaitTime();
 		psi = processInput(true);
@@ -2188,8 +2195,6 @@ void applicationLoop() {
 
 		/*********************Prueba de colisiones****************************/
 		
-		// Trying without sphere sphere Intersection
-
 		for (std::map<std::string,
 			std::tuple<AbstractModel::SBB, glm::mat4, glm::mat4>>::iterator it =
 			collidersSBB.begin(); it != collidersSBB.end(); it++) {
@@ -2412,6 +2417,8 @@ void applicationLoop() {
 
 int main(int argc, char **argv) {
 	//Conversin de coordenadas GIMP a open GL
+		//Position Target For carl
+
 	for (int i=0;i < LampPlantPostion.size();i++){
 		LampPlantPostion[i] = TransformGIMPCoordenatesToOpenGLPixels(LampPlantPostion[i]);
 		LampPlantPostion2[i] = TransformGIMPCoordenatesToOpenGLPixels(LampPlantPostion2[i]);
