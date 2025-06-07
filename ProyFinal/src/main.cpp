@@ -176,7 +176,7 @@ glm::mat4 modelMatrixParticlesLazer;
 //Lamps Plant  Positions contro how many and where 
 std::vector<glm::vec3> LampPlantPostion ={ // multiple lights 
 	glm::vec3(188,0,305),  // COORDANATES IN GIMP CONVERT!!!!!!!!!!!
-	glm::vec3(240,0,360) 
+	//glm::vec3(240,0,360) 
 }; 
 //Lamp Plant Orientation 
 std::vector<float> LampPlantOrientation = { 
@@ -184,7 +184,7 @@ std::vector<float> LampPlantOrientation = {
 }; 
 std::vector<glm::vec3> LampPlantPostion2 ={ //one light 
 	glm::vec3(262,0,363), 
-	glm::vec3(300,0,260) 
+	//glm::vec3(300,0,260) 
 }; 
 std::vector<float> LampPlant2Orientation={ 
 	-90 , 90
@@ -208,6 +208,11 @@ const int IndexAnimationShoot = 2;
 const int IndexAnimationRunBack=6; 
 const int IndexAnimationMoveRight = 8; 
 const int IndexAnimationMoveLeft = 7; 
+
+const int IndexAnimationCarlAttack=1;
+const int IndexAnimationDeathCarl=2;
+const int IndexAnimationCarlWalk=0;
+
 int animationProtagonistIndex=3; 
 // Variables Joystick 
 int presentJoystick; 
@@ -244,10 +249,24 @@ glm::vec3 Carl2TargetPosition = glm::vec3(0.0f, 0.0f, 0.0f);
 const float AllCarlVelocity =0.05;
 const float CarlsY_Offset = 0.12f;
 
-glm::mat4 ModelTargetTransforms[3]={
+const float LimitDistancePlayer = 1.2f;
+const float LimitDistanceTarget = 0.8f;
+
+float Carl1DistanceToPlayer = 0.0f;
+float Carl2DistanceToPlayer = 0.0f;
+
+float Carl1DistanceToTarget = 0.0f;
+float Carl2DistanceToTarget = 0.0f;
+
+glm::mat4 ModelTargetTransforms[8]={
 	glm::mat4(1.0f), //First Target
 	glm::mat4(1.0f), //Second Target
-	glm::mat4(1.0f) //Third Target
+	glm::mat4(1.0f), //Third Target
+	glm::mat4(1.0f),
+	glm::mat4(1.0f),
+	glm::mat4(1.0f),
+	glm::mat4(1.0f),
+	glm::mat4(1.0f)
 };
 glm::vec3 playerPosition = glm::vec3(0.0f, 0.0f, 0.0f);
 float rotNave=0.0f; 
@@ -513,7 +532,7 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	boxViewDepth.init();
 	boxViewDepth.setShader(&shaderViewDepth);
 
-	modelRock.loadModel("../models/rock/rock.obj");
+	modelRock.loadModel("../models/Extra/spaceship.obj");
 	modelRock.setShader(&shaderMulLighting);
 
 	/*modelPistol.loadModel("../models/MyPistol/sb.obj");
@@ -527,15 +546,14 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	//Lamps models
 	modelLampPlant1.loadModel("../models/Lamp1/Plant_1.fbx"); 
 	modelLampPlant1.setShader(&shaderMulLighting); 
-	modelLampPlant2.loadModel("../models/Lamp2/Tree_Light_2.fbx"); 
+	modelLampPlant2.loadModel("../models/Lamp1/Plant_1.fbx"); 
 	modelLampPlant2.setShader(&shaderMulLighting); 
 
 
 	//New models carl, hunter and  protagonist
-	CarlModelAnimate.loadModel("../models/carlRobot/model.fbx"); 
+	CarlModelAnimate.loadModel("../models/Enemy1/enemy.fbx"); 
 	CarlModelAnimate.setShader(&shaderMulLighting);
-
-	CarlModel2Animate.loadModel("../models/carlRobot/model.fbx"); 
+	CarlModel2Animate.loadModel("../models/Enemy1/enemy.fbx"); 
 	CarlModel2Animate.setShader(&shaderMulLighting); 
 
 	ProtagonistModelAnimate.loadModel("../models/SpaceSuit/SpaceSuit.fbx"); 
@@ -993,13 +1011,13 @@ bool processInput(bool continueApplication) {
 	bool presionarContinuar;
 	bool CerraTodo_Salir=false;
 	if(glfwGetGamepadState(GLFW_JOYSTICK_1, &state)){
-		CerraTodo_Salir =(state.buttons[GLFW_GAMEPAD_BUTTON_X] == GLFW_PRESS);
-		presionarEmpezarPartida = (state.buttons[GLFW_GAMEPAD_BUTTON_Y] == GLFW_PRESS);
-		presionarContinuar = (state.buttons[GLFW_GAMEPAD_BUTTON_A] == GLFW_PRESS);
+		CerraTodo_Salir =(state.buttons[GLFW_GAMEPAD_BUTTON_Y] == GLFW_PRESS);
+		presionarEmpezarPartida = (state.buttons[GLFW_GAMEPAD_BUTTON_X] == GLFW_PRESS);
+		presionarContinuar = (state.buttons[GLFW_GAMEPAD_BUTTON_B] == GLFW_PRESS);
 	} else{
-		CerraTodo_Salir =(glfwGetKey(window,GLFW_KEY_X) == GLFW_PRESS);
-		presionarEmpezarPartida = ( glfwGetKey(window,GLFW_KEY_Y) == GLFW_PRESS);
-		presionarContinuar = (glfwGetKey(window,GLFW_KEY_A) == GLFW_PRESS);
+		CerraTodo_Salir =(glfwGetKey(window,GLFW_KEY_Y) == GLFW_PRESS);
+		presionarEmpezarPartida = ( glfwGetKey(window,GLFW_KEY_X) == GLFW_PRESS);
+		presionarContinuar = (glfwGetKey(window,GLFW_KEY_B) == GLFW_PRESS);
 	}
 	if(CerraTodo_Salir){
 		exitApp=true;
@@ -1018,7 +1036,7 @@ bool processInput(bool continueApplication) {
 			else if(textureActivaID == textureInit2ID)
 				textureActivaID = textureInit1ID;
 		}
-		else if(state.buttons[GLFW_GAMEPAD_BUTTON_A] == GLFW_RELEASE)
+		else if(state.buttons[GLFW_GAMEPAD_BUTTON_B] == GLFW_RELEASE)
 			presionarOpcion = false;
 	}
 	//GAME PAD PROTAGONIST CONTROL
@@ -1064,7 +1082,7 @@ bool processInput(bool continueApplication) {
 				}
 			} 
 			//Boton de ataque 
-			if((state.buttons[GLFW_GAMEPAD_BUTTON_Y] == GLFW_PRESS) && !animationRuningShootingRunning && !inmobile){ 
+			if((state.buttons[GLFW_GAMEPAD_BUTTON_X] == GLFW_PRESS) && !animationRuningShootingRunning && !inmobile){ 
 				attackFunction();
 			}
 			if( !((AxisLeftUpDonw>0.5 || AxisLeftUpDonw<-0.5) || (AxisLeftX>0.5 || AxisLeftX<-0.5))  && !animationRuningShootingRunning && !isJump && !inmobile){
@@ -1410,11 +1428,9 @@ void renderSolidScene(){
 	//CARL 1 BEHAVIOUR
 	if(!IsEnemy2Death){
 		// Every X seconds , Carl will change target
-		srand(time(0));
-		
 		if(carlChangeTarget){
 			// Randomly select a target position from the list of targets
-			int randomIndex = rand() % ModelTargetTransforms->length();			
+			int randomIndex = rand() % ARRAY_SIZE_IN_ELEMENTS(ModelTargetTransforms);			
 			Carl1TargetPosition = glm::vec3(ModelTargetTransforms[randomIndex][3]);
 			CarlVel=AllCarlVelocity;
 			carlChangeTarget = false;
@@ -1422,35 +1438,40 @@ void renderSolidScene(){
 		}
 		glm::vec3 MyCarlPosition = glm::vec3(modelMatrixCarl[3]);
 		
-		std::cout << "Target: " << Carl1TargetPosition.x <<","<< Carl1TargetPosition.y<<","<<Carl1TargetPosition.z<< std::endl;
+		//std::cout << "Target: " << Carl1TargetPosition.x <<","<< Carl1TargetPosition.y<<","<<Carl1TargetPosition.z<< std::endl;
 		
 		// Step 1: Calculate direction to the player
 		glm::vec3 directionToObjetive = glm::normalize(glm::vec3(Carl1TargetPosition.x - MyCarlPosition.x, 
 														0.0f, 
 														Carl1TargetPosition.z - MyCarlPosition.z));
 		//step 1.5 calculate distance to stop player from coming to close
-		float distanceToPlayer  = glm::distance(playerPosition,MyCarlPosition);
+		Carl1DistanceToPlayer  = glm::distance(playerPosition,MyCarlPosition);
 		glm::vec3 target=  glm::vec3(Carl1TargetPosition.x,Carl1TargetPosition.y,Carl1TargetPosition.z);
-		float distanceToTarget = glm::distance(target,MyCarlPosition);
-		std::cout << " Carl 1 Distance to player: " << distanceToPlayer << std::endl;
-		std::cout << "Carl 1 Distance to target: " << distanceToTarget << std::endl;
-		if(distanceToPlayer > 0.9f || distanceToTarget > 0.5f){
+		Carl1DistanceToTarget = glm::distance(target,MyCarlPosition);
+		//std::cout << " Carl 1 Distance to player: " << Carl1DistanceToPlayer << std::endl;
+		//std::cout << "Carl 1 Distance to target: " << Carl1DistanceToTarget << std::endl;
+		if(Carl1DistanceToPlayer > LimitDistancePlayer + 6 || Carl1DistanceToTarget > LimitDistanceTarget){
 			// If the player is far away or the target is far away, Carl will walk towards the target
-			CarlAnimationIndex= 1; // Animation for walking
+			CarlAnimationIndex= IndexAnimationCarlWalk; // Animation for walking
 			CarlVel=AllCarlVelocity;
-		} else if (distanceToPlayer <= 0.9f){
-			CarlAnimationIndex= 0; // Animation for atack 
-			CarlVel=0;
-			if(!playerHasbeenAttacked){
-				playerHasbeenAttacked=true;
-				inmobile=true;
-				animationProtagonistIndex= IndexAnimationRecibeHit;
-				VidasJugador--;
-			}					
-		}else if (distanceToTarget <=0.5f){
+		}
+		if (Carl1DistanceToPlayer <= LimitDistancePlayer+6){
+			CarlAnimationIndex= IndexAnimationCarlAttack; // Animation for atack 
+			if(Carl1DistanceToPlayer <= LimitDistancePlayer){
+					CarlVel=0;
+				if(!playerHasbeenAttacked){
+					playerHasbeenAttacked=true;
+					inmobile=true;
+					animationProtagonistIndex= IndexAnimationRecibeHit;
+					VidasJugador--;
+				}
+			}
+		}
+		if (Carl1DistanceToTarget <= LimitDistanceTarget){
 			// If Carl is close to the target, he will stop
-			CarlAnimationIndex= 0; // Animation for standing still
-			carlChangeTarget = true; // Reset target change flag		
+			CarlAnimationIndex= IndexAnimationCarlWalk; // Animation for standing still
+			carlChangeTarget = true; // Reset target change flag
+			//std::cout << "Carl 1 Target change" << std::endl;	
 		}
 
 		//MyCarlPosition += directionToObjetive * CarlVel; // update position
@@ -1476,7 +1497,7 @@ void renderSolidScene(){
 	}else{
 		CarlVel=0;
 		modelMatrixCarl[3][1]= terrain.getHeightTerrain(modelMatrixCarl[3][0], modelMatrixCarl[3][2])+CarlsY_Offset; 
-		CarlModelAnimate.setAnimationIndex(1); 
+		CarlModelAnimate.setAnimationIndex(IndexAnimationDeathCarl); 
 		CarlModelAnimate.render(modelMatrixCarl);
 	}
 
@@ -1486,8 +1507,7 @@ void renderSolidScene(){
 		// Every X seconds , Carl will change target
 		if(carlChangeTarget2){
 			// Randomly select a target position from the list of targets
-			srand(time(0));
-			int randomIndex = rand() % ModelTargetTransforms->length();			
+			int randomIndex = rand() % ARRAY_SIZE_IN_ELEMENTS(ModelTargetTransforms);			
 			Carl2TargetPosition = glm::vec3(ModelTargetTransforms[randomIndex][3]);
 			carlChangeTarget2 = false;
 			CarlVel2=AllCarlVelocity;
@@ -1499,28 +1519,33 @@ void renderSolidScene(){
 														0.0f, 
 														Carl2TargetPosition.z - MyCarlPosition2.z));
 		//step 1.5 calculate distance to stop player from coming to close
-		float distanceToPlayer  = glm::distance(playerPosition,MyCarlPosition2);
+		Carl2DistanceToPlayer = glm::distance(playerPosition,MyCarlPosition2);
 		glm::vec3 target=  glm::vec3(Carl2TargetPosition.x,Carl2TargetPosition.y,Carl2TargetPosition.z);
-		float distanceToTarget = glm::distance(target,MyCarlPosition2);
-		std::cout << " Carl 2 Distance to player: " << distanceToPlayer << std::endl;
-		std::cout << "Carl 2 Distance to target: " << distanceToTarget << std::endl;
-		if(distanceToPlayer > 0.9f || distanceToTarget > 0.5f){
+		Carl2DistanceToTarget = glm::distance(target,MyCarlPosition2);
+		//std::cout << " Carl 2 Distance to player: " << Carl2DistanceToPlayer << std::endl;
+		//std::cout << "Carl 2 Distance to target: " << Carl2DistanceToTarget << std::endl;
+		if(Carl2DistanceToPlayer > LimitDistancePlayer + 6 || Carl2DistanceToTarget >LimitDistanceTarget){
 			// If the player is far away or the target is far away, Carl will walk towards the target
-			CarlAnimationIndex2= 1; // Animation for walking
+			CarlAnimationIndex2= IndexAnimationCarlWalk; // Animation for walking
 			CarlVel2=AllCarlVelocity;
-		} else if (distanceToPlayer <= 0.9f){
-			CarlAnimationIndex2= 0; // Animation for atack still
-			CarlVel2=0;
-			if(!playerHasbeenAttacked){
-				playerHasbeenAttacked=true;
-				inmobile=true;
-				animationProtagonistIndex= IndexAnimationRecibeHit;
-				VidasJugador--;
-			}					
-		}else if (distanceToTarget <= 0.5f){
+		}
+		if (Carl2DistanceToPlayer <= LimitDistancePlayer + 6){
+			CarlAnimationIndex2= IndexAnimationCarlAttack; // Animation for atack still
+			if(Carl2DistanceToPlayer <= LimitDistancePlayer){
+					CarlVel2=0;
+				if(!playerHasbeenAttacked){
+					playerHasbeenAttacked=true;
+					inmobile=true;
+					animationProtagonistIndex= IndexAnimationRecibeHit;
+					VidasJugador--;
+				}	
+			}				
+		}
+		if (Carl2DistanceToTarget <= LimitDistanceTarget){
 			// If Carl is close to the target, he will stop
-			CarlAnimationIndex2= 0; // Animation for standing still
-			carlChangeTarget2 = true; // Reset target change flag		
+			CarlAnimationIndex2= IndexAnimationCarlWalk; // Animation for standing still
+			carlChangeTarget2 = true; // Reset target change flag
+			//std::cout << "Carl 2 Target change" << std::endl;
 		}
 		
 		glm::quat rotationQuaternion = glm::rotation(glm::vec3(0.0f, 0.0f, -1.0f), directionToObjetive);
@@ -1541,7 +1566,7 @@ void renderSolidScene(){
 	}else{
 		CarlVel2=0;
 		modelMatrixCarl2[3][1]= terrain.getHeightTerrain(modelMatrixCarl2[3][0], modelMatrixCarl2[3][2])+CarlsY_Offset;
-		CarlModel2Animate.setAnimationIndex(1); 
+		CarlModel2Animate.setAnimationIndex(IndexAnimationDeathCarl); 
 		CarlModel2Animate.render(modelMatrixCarl2);
 	}
 
@@ -1745,17 +1770,37 @@ glm::vec3 CoordanatesGimpTemp = glm::vec3(0);
 
 void TransformForObjects(){
 
-	CoordanatesGimpTemp = glm::vec3(210,0,178);
+	CoordanatesGimpTemp = glm::vec3(156,0,307);
 	CoordanatesGimpTemp = TransformGIMPCoordenatesToOpenGLPixels(CoordanatesGimpTemp);
 	ModelTargetTransforms[0] = glm::translate(ModelTargetTransforms[0], CoordanatesGimpTemp);
 
-	CoordanatesGimpTemp = glm::vec3(164,0,327);
+	CoordanatesGimpTemp = glm::vec3(190,0,271);
 	CoordanatesGimpTemp = TransformGIMPCoordenatesToOpenGLPixels(CoordanatesGimpTemp);
 	ModelTargetTransforms[1] = glm::translate(ModelTargetTransforms[1], CoordanatesGimpTemp);
 	
-	CoordanatesGimpTemp = glm::vec3(340,0,259);
+	CoordanatesGimpTemp = glm::vec3(153,0,276);
 	CoordanatesGimpTemp = TransformGIMPCoordenatesToOpenGLPixels(CoordanatesGimpTemp);
 	ModelTargetTransforms[2] = glm::translate(ModelTargetTransforms[2], CoordanatesGimpTemp);
+
+	CoordanatesGimpTemp = glm::vec3(150,0,243);
+	CoordanatesGimpTemp = TransformGIMPCoordenatesToOpenGLPixels(CoordanatesGimpTemp);
+	ModelTargetTransforms[3] = glm::translate(ModelTargetTransforms[3], CoordanatesGimpTemp);
+
+	CoordanatesGimpTemp = glm::vec3(236,0,256);
+	CoordanatesGimpTemp = TransformGIMPCoordenatesToOpenGLPixels(CoordanatesGimpTemp);
+	ModelTargetTransforms[4] = glm::translate(ModelTargetTransforms[4], CoordanatesGimpTemp);
+	
+	CoordanatesGimpTemp = glm::vec3(220,0,203);
+	CoordanatesGimpTemp = TransformGIMPCoordenatesToOpenGLPixels(CoordanatesGimpTemp);
+	ModelTargetTransforms[5] = glm::translate(ModelTargetTransforms[5], CoordanatesGimpTemp);
+
+	CoordanatesGimpTemp = glm::vec3(267,0,200);
+	CoordanatesGimpTemp = TransformGIMPCoordenatesToOpenGLPixels(CoordanatesGimpTemp);
+	ModelTargetTransforms[6] = glm::translate(ModelTargetTransforms[6], CoordanatesGimpTemp);
+	
+	CoordanatesGimpTemp = glm::vec3(296,0,217);
+	CoordanatesGimpTemp = TransformGIMPCoordenatesToOpenGLPixels(CoordanatesGimpTemp);
+	ModelTargetTransforms[7] = glm::translate(ModelTargetTransforms[7], CoordanatesGimpTemp);
 
 	CoordanatesGimpTemp = glm::vec3(250,0,300);
 	CoordanatesGimpTemp = TransformGIMPCoordenatesToOpenGLPixels(CoordanatesGimpTemp);
@@ -1818,7 +1863,7 @@ void applicationLoop() {
 			continue;
 		}
 		lastTime = currTime;
-		TimeManager::Instance().CalculateFrameRate(false); // Set to true to show FPS
+		TimeManager::Instance().CalculateFrameRate(true); // Set to true to show FPS
 		deltaTime = TimeManager::Instance().DeltaTime;
 		WaitTime();
 		psi = processInput(true);
@@ -1954,8 +1999,8 @@ void applicationLoop() {
 			generatePointLight(LampPlantPostion2,i,glm::vec3(1.0,1.0,0.0),glm::vec3(0.25,0.25,0.25),glm::vec3(1.0,0.5,0.0),0.08); 
 			} 
 		//Generate Lights for inside the plant 
-		PointLightGeneratePlant1(glm::vec3(-0.132,1.906,-0.163)); 
-		PointLightGeneratePlant1(glm::vec3(-0.584,1.236,-0.147)); 
+		//PointLightGeneratePlant1(glm::vec3(-0.132,1.906,-0.163)); 
+		//PointLightGeneratePlant1(glm::vec3(-0.584,1.236,-0.147)); 
 		PointLightGeneratePlant1(glm::vec3(0.704,1.325,-0.227)); 
 		glm::vec3 spotPosition2 = glm::vec3{modelMatrixmodelAircraftVehiculeBody*glm::vec4(0.0,0.5f,0.0,1.0)};  // Localization light on ship
 		generatePointLight(spotPosition2,LampPlantPostion2.size() +LampPlantPostion.size()*3,glm::vec3(0.0,1.0,0.0),glm::vec3(1.0,1.0,0.0),glm::vec3(0.4,1.0,0.4),2.0); 
@@ -2054,13 +2099,13 @@ void applicationLoop() {
 		AbstractModel::OBB CarlCollider;
 		// Set the orientation of collider before doing the scale
 		CarlCollider.u = glm::quat_cast(modelMatrixCarl);
-		modelMatrixColliderCarl = glm::scale(modelMatrixColliderCarl,glm::vec3(1.0,8.0,1.0f));
+		modelMatrixColliderCarl = glm::scale(modelMatrixColliderCarl,glm::vec3(1.0,3.0,1.0f));
 		modelMatrixColliderCarl = glm::translate(modelMatrixColliderCarl,
 		glm::vec3(CarlModelAnimate.getObb().c.x,
 				CarlModelAnimate.getObb().c.y,
 				CarlModelAnimate.getObb().c.z));
 		CarlCollider.c = glm::vec3(modelMatrixColliderCarl[3] + glm::vec4(0,1.25,0,0.0));
-		CarlCollider.e = CarlModelAnimate.getObb().e * glm::vec3(1.0,8.0,1.0f) * glm::vec3(0.787401574, 0.787401574, 0.787401574);
+		CarlCollider.e = CarlModelAnimate.getObb().e * glm::vec3(1.0,3.0,1.0f) * glm::vec3(0.787401574, 0.787401574, 0.787401574);
 		addOrUpdateColliders(collidersOBB, "Carl1", CarlCollider, modelMatrixCarl);
 
 		//Collider carl 2
@@ -2069,13 +2114,13 @@ void applicationLoop() {
 		AbstractModel::OBB CarlCollider2;
 		// Set the orientation of collider before doing the scale
 		CarlCollider2.u = glm::quat_cast(modelMatrixCarl2);
-		modelMatrixColliderCarl2 = glm::scale(modelMatrixColliderCarl2,glm::vec3(1.0,8.0,1.0f));
+		modelMatrixColliderCarl2 = glm::scale(modelMatrixColliderCarl2,glm::vec3(1.0,3.0,1.0f));
 		modelMatrixColliderCarl2 = glm::translate(modelMatrixColliderCarl2,
 		glm::vec3(CarlModel2Animate.getObb().c.x,
 				CarlModel2Animate.getObb().c.y,
 				CarlModel2Animate.getObb().c.z));
 		CarlCollider2.c = glm::vec3(modelMatrixColliderCarl2[3] + glm::vec4(0,1.25,0,0.0));
-		CarlCollider2.e = CarlModel2Animate.getObb().e * glm::vec3(1.0,8.0,1.0f) * glm::vec3(0.787401574, 0.787401574, 0.787401574);
+		CarlCollider2.e = CarlModel2Animate.getObb().e * glm::vec3(1.0,3.0,1.0f) * glm::vec3(0.787401574, 0.787401574, 0.787401574);
 		addOrUpdateColliders(collidersOBB, "Carl2", CarlCollider2, modelMatrixCarl2);
 
 
@@ -2112,10 +2157,10 @@ void applicationLoop() {
 		//Collider del la rock
 		AbstractModel::SBB rockCollider;
 		glm::mat4 modelMatrixColliderRock= glm::mat4(modelMatrixRock);
-		modelMatrixColliderRock = glm::scale(modelMatrixColliderRock, glm::vec3(1.0, 1.0, 1.0));
+		modelMatrixColliderRock = glm::scale(modelMatrixColliderRock, glm::vec3(0.7, 0.7, 0.7));
 		modelMatrixColliderRock = glm::translate(modelMatrixColliderRock, modelRock.getSbb().c);
 		rockCollider.c = glm::vec3(modelMatrixColliderRock[3]);
-		rockCollider.ratio = modelRock.getSbb().ratio * 1.0;
+		rockCollider.ratio = modelRock.getSbb().ratio * 0.8f;
 		addOrUpdateColliders(collidersSBB, "rock", rockCollider, modelMatrixRock);
 		// Lamps1 colliders
 		for (int i = 0; i < LampPlantPostion.size(); i++){
@@ -2175,9 +2220,9 @@ void applicationLoop() {
 			matrixCollider = glm::translate(matrixCollider, std::get<0>(it->second).c);
 			matrixCollider = matrixCollider * glm::mat4(std::get<0>(it->second).u);
 			matrixCollider = glm::scale(matrixCollider, std::get<0>(it->second).e * 2.0f);
-			boxCollider.setColor(glm::vec4(1.0, 1.0, 1.0, 1.0));
-			boxCollider.enableWireMode();
-			boxCollider.render(matrixCollider);
+			//boxCollider.setColor(glm::vec4(1.0, 1.0, 1.0, 1.0));
+			//boxCollider.enableWireMode();
+			//boxCollider.render(matrixCollider);
 		}
 
 		for (std::map<std::string, std::tuple<AbstractModel::SBB, glm::mat4, glm::mat4> >::iterator it =
@@ -2185,9 +2230,9 @@ void applicationLoop() {
 			glm::mat4 matrixCollider = glm::mat4(1.0);
 			matrixCollider = glm::translate(matrixCollider, std::get<0>(it->second).c);
 			matrixCollider = glm::scale(matrixCollider, glm::vec3(std::get<0>(it->second).ratio * 2.0f));
-			sphereCollider.setColor(glm::vec4(1.0, 1.0, 1.0, 1.0));
-			sphereCollider.enableWireMode();
-			sphereCollider.render(matrixCollider);
+			//sphereCollider.setColor(glm::vec4(1.0, 1.0, 1.0, 1.0));
+			//sphereCollider.enableWireMode();
+			//sphereCollider.render(matrixCollider);
 		}
 
 		/**********Render de transparencias***************/
@@ -2204,14 +2249,13 @@ void applicationLoop() {
 				collidersSBB.begin(); jt != collidersSBB.end(); jt++) {
 				if (it != jt && testSphereSphereIntersection(
 					std::get<0>(it->second), std::get<0>(jt->second))) {
-					std::cout << "Hay collision con esfera entre " << it->first <<
-						" y el modelo " << jt->first << std::endl;
+					//std::cout << "Hay collision con esfera entre " << it->first <<" y el modelo " << jt->first << std::endl;
 					isCollision = true;
 				}
 			}
 			addOrUpdateCollisionDetection(collisionDetection, it->first, isCollision);
 		}
-
+		bool CarlsColliding = false;
 		for (std::map<std::string,
 			std::tuple<AbstractModel::OBB, glm::mat4, glm::mat4>>::iterator it =
 			collidersOBB.begin(); it != collidersOBB.end(); it++) {
@@ -2221,9 +2265,14 @@ void applicationLoop() {
 				collidersOBB.begin(); jt != collidersOBB.end(); jt++) {
 				if (it != jt && 
 					testOBBOBB(std::get<0>(it->second), std::get<0>(jt->second))) {
-					std::cout << "Hay colision entre " << it->first << " y el modelo" <<
-						jt->first << std::endl;
+					//std::cout << "Hay colision entre OBB " << it->first << " y el OBB modelo" <<jt->first << std::endl;
 					isColision = true;
+					if(it->first.compare("Carl1") && jt->first.compare("Carl2")
+						|| it->first.compare("Carl2") && jt->first.compare("Carl1")){
+						CarlsColliding = true;
+					}else{
+						CarlsColliding = false;
+					}
 				}
 			}
 			addOrUpdateCollisionDetection(collisionDetection, it->first, isColision);
@@ -2237,8 +2286,7 @@ void applicationLoop() {
 				std::tuple<AbstractModel::OBB, glm::mat4, glm::mat4>>::iterator jt =
 				collidersOBB.begin(); jt != collidersOBB.end(); jt++) {
 				if (testSphereOBox(std::get<0>(it->second), std::get<0>(jt->second))) {
-					std::cout << "Hay colision del " << it->first << " y el modelo" <<
-						jt->first << std::endl;
+					//std::cout << "Hay colision del SBB " << it->first << " y el modelo OBB" <<jt->first << std::endl;
 					isCollision = true;
 					addOrUpdateCollisionDetection(collisionDetection, jt->first, true);
 				}
@@ -2271,12 +2319,15 @@ void applicationLoop() {
 						modelMatrixHunter2 = std::get<1>(obbBuscado->second);
 					}
 					if (itCollision->first.compare("Carl1") == 0){
-						modelMatrixCarl = std::get<1>(obbBuscado->second);
-						//CarlVel=0;
+						if(!CarlsColliding){
+							modelMatrixCarl = std::get<1>(obbBuscado->second);
+						}
 					}
 					if (itCollision->first.compare("Carl2") == 0){
-						modelMatrixCarl2 = std::get<1>(obbBuscado->second);
-						//CarlVel2=0;
+						if (!CarlsColliding)
+						{
+							modelMatrixCarl2 = std::get<1>(obbBuscado->second);
+						}
 					}
 				}
 			}
@@ -2300,8 +2351,7 @@ void applicationLoop() {
 			float tRint;
 			if (raySphereIntersect(ori, targetRay, rayDirection,
 				std::get<0>(itSBB->second), tRint)) {
-				std::cout << "Collision del rayo con el modelo " << itSBB->first 
-				<< std::endl;
+				//std::cout << "Collision del rayo con el modelo " << itSBB->first << std::endl;
 				
 			}
 		}
@@ -2416,6 +2466,8 @@ void applicationLoop() {
 }
 
 int main(int argc, char **argv) {
+	srand(time(0));
+
 	//Conversin de coordenadas GIMP a open GL
 		//Position Target For carl
 
