@@ -844,7 +844,7 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 		printf("init - no errors after alGenSources\n");
 	}
 	alSourcef(source[0], AL_PITCH, 1.0f);
-	alSourcef(source[0], AL_GAIN, 3.0f);
+	alSourcef(source[0], AL_GAIN,0.3f);
 	alSourcefv(source[0], AL_POSITION, source0Pos);
 	alSourcefv(source[0], AL_VELOCITY, source0Vel);
 	alSourcei(source[0], AL_BUFFER, buffer[0]);
@@ -852,7 +852,7 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	alSourcef(source[0], AL_MAX_DISTANCE,500);
 
 	alSourcef(source[1], AL_PITCH, 1.0f);
-	alSourcef(source[1], AL_GAIN, 0.5f);
+	alSourcef(source[1], AL_GAIN, 1.0f);
 	alSourcefv(source[1], AL_POSITION, source1Pos);
 	alSourcefv(source[1], AL_VELOCITY, source1Vel);
 	alSourcei(source[1], AL_BUFFER, buffer[1]);
